@@ -56,7 +56,7 @@ class Printer extends Actor with ActorLogging {
 //#printer-actor
 
 //#main-class
-object AkkaQuickstart extends App {
+object AkkaQuickstart {
   import Greeter._
 
   // Create the 'helloAkka' actor system

@@ -1,32 +1,41 @@
 package botkop
 
-import akka.actor.{Actor, ActorRef, ActorSystem, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import scorch.autograd.Variable
 import scorch.nn.Module
 import scorch.optim.Optimizer
 
-case class Gate(m: Module, o: Optimizer) extends Actor {
+case class Gate(module: Module, optimizer: Optimizer)
 
+class GateActor(gate: Gate) extends Actor with ActorLogging {
+
+  import gate._
   import botkop.Gate._
+
+  log.debug("instantiating gate actor")
 
   override def receive: Receive = {
     case wire: Wiring =>
+      log.debug(s"received wire $wire")
       context become forwardHandle(wire)
+    case u =>
+      log.debug(s"unknown message $u")
   }
 
   def forwardHandle(wire: Wiring): Receive = {
     case Forward(v) =>
-      val result = m(v)
-      for (n <- wire.next) n ! Forward(result)
-      context become backwardHandle(result, wire)
+      val result = gate.module(v)
+      wire.next ! Forward(result)
+      context become backwardHandle(v, result, wire)
   }
 
-  def backwardHandle(output: Variable, wire: Wiring): Receive = {
+  def backwardHandle(input: Variable, output: Variable, wire: Wiring): Receive = {
     case Backward(g) =>
-      o.zeroGrad()
+      log.debug(s"receive backward g shape: ${g.shape}")
+      optimizer.zeroGrad()
       output.backward(g)
-      o.step()
-      for (p <- wire.prev) p ! Backward(g)
+      optimizer.step()
+      wire.prev ! Backward(input.grad)
       context become forwardHandle(wire)
   }
 }
@@ -34,27 +43,8 @@ case class Gate(m: Module, o: Optimizer) extends Actor {
 object Gate {
 
   def stage(g: Gate)(implicit system: ActorSystem): ActorRef =
-    system.actorOf(Props(g))
-
-  def stage(gates: Gate*)(implicit system: ActorSystem): List[ActorRef] =
-    stage(gates: _*)
-
-  def stage(gates: List[Gate])(implicit system: ActorSystem): List[ActorRef] = {
-    val actors = gates.map(g => Gate.stage(g))
-    wire(actors)
-  }
-
-  def wire(gates: List[ActorRef]): List[ActorRef] = {
-    gates.zipWithIndex.foreach {
-      case (g, i) =>
-        val prev = if (i > 0) Some(gates(i - 1)) else None
-        val next = if (i + 1 < gates.length) Some(gates(i + 1)) else None
-        g ! Wiring(prev, next)
-    }
-    gates
-  }
+    system.actorOf(Props(new GateActor(g)))
 
   case class Forward(v: Variable)
   case class Backward(v: Variable)
-  case class Wiring(prev: Option[ActorRef], next: Option[ActorRef])
 }
