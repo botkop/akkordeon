@@ -24,9 +24,11 @@ class GateActor(gate: Gate) extends Actor with ActorLogging {
 
   def forwardHandle(wire: Wiring): Receive = {
     case Forward(v) =>
-      val result = gate.module(v)
+      val result = module(v)
       wire.next ! Forward(result)
       context become backwardHandle(v, result, wire)
+    case Eval(x, y) =>
+      wire.next ! Eval(module(x), y)
   }
 
   def backwardHandle(input: Variable, output: Variable, wire: Wiring): Receive = {
@@ -34,9 +36,11 @@ class GateActor(gate: Gate) extends Actor with ActorLogging {
       log.debug(s"receive backward g shape: ${g.shape}")
       optimizer.zeroGrad()
       output.backward(g)
-      optimizer.step()
       wire.prev ! Backward(input.grad)
+      optimizer.step()
       context become forwardHandle(wire)
+    case Eval(x, y) =>
+      wire.next ! Eval(module(x), y)
   }
 }
 
@@ -47,4 +51,8 @@ object Gate {
 
   case class Forward(v: Variable)
   case class Backward(v: Variable)
+  case class Eval(x: Variable, y: Variable)
+  object Eval {
+    def apply(xy: (Variable, Variable)): Eval = Eval(xy._1, xy._2)
+  }
 }

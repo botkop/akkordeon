@@ -1,14 +1,15 @@
 package botkop
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
-import botkop.Gate.{Backward, Forward}
-import botkop.Sentinel.Start
+import botkop.Gate.{Backward, Eval, Forward}
+import botkop.Sentinel._
 import scorch.autograd.Variable
 import scorch.data.loader.DataLoader
 
-case class Sentinel(dl: DataLoader,
+case class Sentinel(tdl: DataLoader,
+                    vdl: DataLoader,
                     loss: (Variable, Variable) => Variable,
-                    evaluator: (Variable, Variable, Double) => Unit)
+                    evaluator: (Variable, Variable) => Double)
 
 class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
 
@@ -19,11 +20,11 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
   override def receive: Receive = {
     case wire: Wiring =>
       log.debug(s"received wire $wire")
-      val di = dl.toIterator
+      val di = tdl.toIterator
       context become beginPoint(wire, di, di.next())
 
     case u =>
-      log.debug(s"unknown message $u")
+      log.error(s"unknown message $u")
   }
 
   def beginPoint(wire: Wiring,
@@ -36,12 +37,13 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
       if (di.hasNext) {
         context become endPoint(wire, y, di, di.next())
       } else {
-        // log.info(s"new epoch")
-        val ndi = dl.toIterator
-        context become endPoint(wire, y, ndi, ndi.next())
+        val vi = vdl.iterator
+        wire.next ! Eval(vi.next())
+        context become evalHandler(wire, vi)
       }
+
     case u =>
-      log.error(s"unknown message $u")
+      log.error(s"beginPoint: unknown message $u")
   }
 
   def endPoint(wire: Wiring,
@@ -51,12 +53,45 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
     case Forward(yHat) =>
       log.debug("received forward")
       val l = loss(yHat, y)
-      evaluator(yHat, y, l.data.squeeze())
+      // println(evaluator(yHat, y))
       l.backward()
-
-      log.debug(s"yHat.grad shape = ${yHat.grad.shape}")
       wire.prev ! Backward(yHat.grad)
       context become beginPoint(wire, di, batch)
+    case u =>
+      log.error(s"endPoint: unknown message $u")
+  }
+
+  def evalHandler(wire: Wiring,
+                  vi: Iterator[(Variable, Variable)],
+                  n: Int = 0,
+                  cumLoss: Double = 0,
+                  cumEval: Double = 0): Receive = {
+
+    case Eval(x, y) =>
+      val l = loss(x, y).data.squeeze()
+      val e = evaluator(x, y)
+      if (vi.hasNext) {
+        wire.next ! Eval(vi.next())
+        context become evalHandler(wire, vi, n + 1, cumLoss + l, cumEval + e)
+      } else {
+        val al = (cumLoss + l) / n
+        val ae = (cumEval + e) / n
+        println(s"loss: $al, eval: $ae")
+
+//        val ndi = tdl.toIterator
+//        val (x, y) = ndi.next()
+//        val nn = ndi.next()
+//        wire.next ! Forward(x)
+//        context become endPoint(wire, y, ndi, nn)
+
+//        val di = tdl.toIterator
+//        self ! Start
+//        context become beginPoint(wire, di, di.next())
+
+      }
+
+    case u =>
+      log.error(s"evalHandler: unknown message $u")
   }
 }
 
