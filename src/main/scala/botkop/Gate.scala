@@ -16,7 +16,7 @@ class GateActor(gate: Gate) extends Actor with ActorLogging {
 
   override def receive: Receive = {
     case initWire: Wiring =>
-      log.debug(s"received wire $wire")
+      log.debug(s"received wire $initWire")
       this.wire = initWire
       context become forwardHandle
     case u =>
@@ -50,8 +50,8 @@ class GateActor(gate: Gate) extends Actor with ActorLogging {
 
 object Gate {
 
-  def stage(g: Gate)(implicit system: ActorSystem): ActorRef =
-    system.actorOf(Props(new GateActor(g)))
+  def stage(g: Gate, name: String)(implicit system: ActorSystem): ActorRef =
+    system.actorOf(Props(new GateActor(g)), name)
 
   case class Forward(v: Variable)
   case class Backward(v: Variable)

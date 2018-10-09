@@ -21,7 +21,7 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
 
   override def receive: Receive = {
     case initWire: Wiring =>
-      log.debug(s"received wire $wire")
+      log.debug(s"received wire $initWire")
       wire = initWire
       val di = tdl.toIterator
       context become beginPoint(di, di.next())
@@ -74,7 +74,8 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
       } else {
         val valLoss = l / vdl.numBatches
         val eval = e / vdl.numBatches
-        println(f"epoch: $epoch%5d trn_loss: $trnLoss%9.6f val_loss: $valLoss%9.6f eval: $eval%9.6f")
+        println(
+          f"epoch: $epoch%5d trn_loss: $trnLoss%9.6f val_loss: $valLoss%9.6f eval: $eval%9.6f")
 
         val di = tdl.toIterator
         self ! Start
@@ -82,7 +83,7 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
       }
 
     case _: Backward =>
-      // ignore
+    // ignore
 
     case u =>
       log.error(s"evalHandler: unknown message $u")
@@ -92,6 +93,6 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
 object Sentinel {
   case object Start
 
-  def stage(s: Sentinel)(implicit system: ActorSystem): ActorRef =
-    system.actorOf(Props(new SentinelActor(s)))
+  def stage(s: Sentinel, name: String)(implicit system: ActorSystem): ActorRef =
+    system.actorOf(Props(new SentinelActor(s)), name)
 }
