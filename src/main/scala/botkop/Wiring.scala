@@ -17,15 +17,15 @@ object Wiring {
     sentinel :: gates
   }
 
-  def stage(sentinel: Sentinel, gates: List[Gate])(
+  def wire(sentinel: Sentinel, gates: List[Gate])(
       implicit system: ActorSystem): List[ActorRef] = {
     val s = Sentinel.stage(sentinel)
     val gs = gates.map(g => Gate.stage(g))
     wire(s, gs)
   }
 
-  def stage(sentinel: Sentinel, gates: Gate*)(
+  def wire(sentinel: Sentinel, gates: Gate*)(
       implicit system: ActorSystem): List[ActorRef] =
-    stage(sentinel, gates.toList)
+    wire(sentinel, gates.toList)
 
 }

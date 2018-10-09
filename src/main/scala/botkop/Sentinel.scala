@@ -13,82 +13,76 @@ case class Sentinel(tdl: DataLoader,
 
 class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
 
+  type DataIterator = Iterator[(Variable, Variable)]
   import sentinel._
 
-  log.debug("instantiating sentinel actor")
+  var epoch = 0
+  var wire: Wiring = _
 
   override def receive: Receive = {
-    case wire: Wiring =>
+    case initWire: Wiring =>
       log.debug(s"received wire $wire")
+      wire = initWire
       val di = tdl.toIterator
-      context become beginPoint(wire, di, di.next())
+      context become beginPoint(di, di.next())
 
     case u =>
       log.error(s"unknown message $u")
   }
 
-  def beginPoint(wire: Wiring,
-                 di: Iterator[(Variable, Variable)],
-                 batch: (Variable, Variable)): Receive = {
+  def beginPoint(di: DataIterator,
+                 batch: (Variable, Variable),
+                 cumLoss: Double = 0): Receive = {
     case msg @ (Start | _: Backward) =>
+      if (msg == Start) epoch = epoch + 1
       val (x, y) = batch
       wire.next ! Forward(x)
-
-      if (di.hasNext) {
-        context become endPoint(wire, y, di, di.next())
-      } else {
-        val vi = vdl.iterator
-        wire.next ! Eval(vi.next())
-        context become evalHandler(wire, vi)
-      }
+      context become endPoint(y, di, cumLoss)
 
     case u =>
       log.error(s"beginPoint: unknown message $u")
   }
 
-  def endPoint(wire: Wiring,
-               y: Variable,
-               di: Iterator[(Variable, Variable)],
-               batch: (Variable, Variable)): Receive = {
+  def endPoint(y: Variable, di: DataIterator, cumLoss: Double): Receive = {
     case Forward(yHat) =>
-      log.debug("received forward")
       val l = loss(yHat, y)
-      // println(evaluator(yHat, y))
       l.backward()
       wire.prev ! Backward(yHat.grad)
-      context become beginPoint(wire, di, batch)
-    case u =>
-      log.error(s"endPoint: unknown message $u")
+      val newLoss = cumLoss + l.data.squeeze()
+
+      if (di.hasNext) {
+        context become beginPoint(di, di.next(), newLoss)
+      } else {
+        val vi = vdl.iterator
+        wire.next ! Eval(vi.next())
+        val avgLoss = newLoss / tdl.numBatches
+        context become evalHandler(vi, avgLoss)
+      }
   }
 
-  def evalHandler(wire: Wiring,
-                  vi: Iterator[(Variable, Variable)],
-                  n: Int = 0,
+  def evalHandler(vi: DataIterator,
+                  trnLoss: Double,
                   cumLoss: Double = 0,
                   cumEval: Double = 0): Receive = {
 
     case Eval(x, y) =>
-      val l = loss(x, y).data.squeeze()
-      val e = evaluator(x, y)
+      val l = cumLoss + loss(x, y).data.squeeze()
+      val e = cumEval + evaluator(x, y)
       if (vi.hasNext) {
         wire.next ! Eval(vi.next())
-        context become evalHandler(wire, vi, n + 1, cumLoss + l, cumEval + e)
+        context become evalHandler(vi, trnLoss, l, e)
       } else {
-        val al = (cumLoss + l) / n
-        val ae = (cumEval + e) / n
-        println(s"loss: $al, eval: $ae")
+        val valLoss = l / vdl.numBatches
+        val eval = e / vdl.numBatches
+        println(f"epoch: $epoch%5d trn_loss: $trnLoss%9.6f val_loss: $valLoss%9.6f eval: $eval%9.6f")
 
-//        val ndi = tdl.toIterator
-//        val (x, y) = ndi.next()
-//        val nn = ndi.next()
-//        wire.next ! Forward(x)
-//        context become endPoint(wire, y, ndi, nn)
-
-//        val di = tdl.toIterator
-//        self ! Start
-//        context become beginPoint(wire, di, di.next())
-
+        val di = tdl.toIterator
+        self ! Start
+        context become beginPoint(di, di.next())
       }
+
+    case _: Backward =>
+      // ignore
 
     case u =>
       log.error(s"evalHandler: unknown message $u")

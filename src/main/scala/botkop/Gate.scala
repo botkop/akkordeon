@@ -12,35 +12,39 @@ class GateActor(gate: Gate) extends Actor with ActorLogging {
   import gate._
   import botkop.Gate._
 
-  log.debug("instantiating gate actor")
+  var wire: Wiring = _
 
   override def receive: Receive = {
-    case wire: Wiring =>
+    case initWire: Wiring =>
       log.debug(s"received wire $wire")
-      context become forwardHandle(wire)
+      this.wire = initWire
+      context become forwardHandle
     case u =>
-      log.debug(s"unknown message $u")
+      log.error(s"unknown message $u")
   }
 
-  def forwardHandle(wire: Wiring): Receive = {
+  def forwardHandle: Receive = {
     case Forward(v) =>
       val result = module(v)
       wire.next ! Forward(result)
-      context become backwardHandle(v, result, wire)
+      context become backwardHandle(v, result)
     case Eval(x, y) =>
       wire.next ! Eval(module(x), y)
+    case u =>
+      log.error(s"unknown message $u")
   }
 
-  def backwardHandle(input: Variable, output: Variable, wire: Wiring): Receive = {
+  def backwardHandle(input: Variable, output: Variable): Receive = {
     case Backward(g) =>
-      log.debug(s"receive backward g shape: ${g.shape}")
       optimizer.zeroGrad()
       output.backward(g)
       wire.prev ! Backward(input.grad)
       optimizer.step()
-      context become forwardHandle(wire)
+      context become forwardHandle
     case Eval(x, y) =>
       wire.next ! Eval(module(x), y)
+    case u =>
+      log.error(s"unknown message $u")
   }
 }
 

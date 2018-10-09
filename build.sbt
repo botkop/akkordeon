@@ -1,4 +1,4 @@
-name := "akka-quickstart-scala"
+name := "akkordeon"
 
 version := "1.0"
 

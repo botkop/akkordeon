@@ -9,52 +9,41 @@ import scorch.nn._
 import scorch.optim.SGD
 import botkop.{numsca => ns}
 
-import scala.collection.immutable
+import scala.language.postfixOps
 
 object Akkordeon extends App {
 
   implicit val system: ActorSystem = ActorSystem("akkordeon")
 
-  val imageSize = 32 * 32
+  val imageSize = 28 * 28
   val batchSize = 16
-  val lr = 0.1
+  val lr = 0.01
 
-  val m1: Module = new Module() {
-    val fc = Linear(imageSize, 100)
-    override def forward(x: Variable): Variable = x ~> fc ~> relu
+  def makeNet(lr: Double, sizes: Int*): List[Gate] = {
+    sizes.sliding(2, 1).map { l =>
+      val m = new Module() {
+        val fc = Linear(l.head, l.last)
+        override def forward(x: Variable): Variable = x ~> fc ~> relu
+      }
+      val o = SGD(m.parameters, lr)
+      Gate(m, o)
+    } toList
   }
-  val o1 = SGD(m1.parameters, lr)
-  val g1 = Gate(m1, o1)
 
-  val m2: Module = new Module() {
-    val fc = Linear(100, 10)
-    override def forward(x: Variable): Variable = x ~> fc ~> relu
-  }
-  val o2 = SGD(m2.parameters, lr)
-  val g2 = Gate(m2, o2)
+  val net = makeNet(lr, imageSize, 50, 20, 10)
 
-  val tdl: DataLoader = new DataLoader {
-    override def numBatches: Int = 10
-    override def numSamples: Int = batchSize * numBatches
-
-    val data: immutable.IndexedSeq[(Variable, Variable)] = (1 to numBatches) map { _ =>
-      val x = ns.randn(batchSize, imageSize)
-      val y = ns.randint(10, batchSize, 1)
-      (Variable(x), Variable(y))
-    }
-
-    override def iterator: Iterator[(Variable, Variable)] = data.iterator
-  }
+  val tdl = DataLoader.instance("mnist", "train", batchSize)
+  val vdl = DataLoader.instance("mnist", "dev", batchSize)
 
   def accuracy(yHat: Variable, y: Variable): Double = {
     val guessed = ns.argmax(yHat.data, axis = 1)
     ns.mean(y.data == guessed).squeeze()
   }
 
-  val s = Sentinel(tdl, tdl, softmaxLoss, accuracy)
-  val ring = Wiring.stage(s, g1, g2)
+  val s = Sentinel(tdl, vdl, softmaxLoss, accuracy)
+  val ring = Wiring.wire(s, net)
 
-  ring.foreach(_ ! Start)
+  ring.head ! Start
 
 }
 
