@@ -21,7 +21,7 @@ object Akkordeon extends App {
 
   def makeNet(lr: Double, sizes: Int*): List[Gate] = {
     sizes.sliding(2, 1).map { l =>
-      val m = new Module() {
+      val m: Module = new Module() {
         val fc = Linear(l.head, l.last)
         override def forward(x: Variable): Variable = x ~> fc ~> relu
       }

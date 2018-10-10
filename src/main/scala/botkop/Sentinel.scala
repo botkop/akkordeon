@@ -13,7 +13,6 @@ case class Sentinel(tdl: DataLoader,
 
 class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
 
-  type DataIterator = Iterator[(Variable, Variable)]
   import sentinel._
 
   var epoch = 0
