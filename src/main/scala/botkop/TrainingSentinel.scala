@@ -8,6 +8,10 @@ import scorch.data.loader.DataLoader
 
 case class TrainingSentinel(tdl: DataLoader,
                             loss: (Variable, Variable) => Variable)
+    extends Stageable {
+  def stage(implicit system: ActorSystem): ActorRef =
+    system.actorOf(Props(new TrainingSentinelActor(this)), "trainingSentinel")
+}
 
 class TrainingSentinelActor(sentinel: TrainingSentinel)
     extends Actor
@@ -61,10 +65,4 @@ class TrainingSentinelActor(sentinel: TrainingSentinel)
     case u =>
       log.error(s"endPoint: unknown message $u")
   }
-}
-
-object TrainingSentinel {
-  def stage(s: TrainingSentinel, name: String)(
-      implicit system: ActorSystem): ActorRef =
-    system.actorOf(Props(new TrainingSentinelActor(s)), name)
 }

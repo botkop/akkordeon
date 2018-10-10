@@ -9,6 +9,11 @@ import scorch.data.loader.DataLoader
 case class ValidationSentinel(vdl: DataLoader,
                               loss: (Variable, Variable) => Variable,
                               evaluator: (Variable, Variable) => Double)
+    extends Stageable {
+  def stage(implicit system: ActorSystem): ActorRef =
+    system.actorOf(Props(new ValidationSentinelActor(this)),
+                   "validationSentinel")
+}
 
 class ValidationSentinelActor(sentinel: ValidationSentinel)
     extends Actor
@@ -55,7 +60,4 @@ class ValidationSentinelActor(sentinel: ValidationSentinel)
 object ValidationSentinel {
   case class Eval(v: Variable)
   case class EvalResult(loss: Double, eval: Double)
-  def stage(s: ValidationSentinel, name: String)(
-      implicit system: ActorSystem): ActorRef =
-    system.actorOf(Props(new ValidationSentinelActor(s)), name)
 }

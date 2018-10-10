@@ -5,7 +5,10 @@ import scorch.autograd.Variable
 import scorch.nn.Module
 import scorch.optim.Optimizer
 
-case class Gate(module: Module, optimizer: Optimizer)
+case class Gate(name: String, module: Module, optimizer: Optimizer) extends Stageable {
+  def stage(implicit system: ActorSystem): ActorRef =
+    system.actorOf(Props(new GateActor(this)), name)
+}
 
 class GateActor(gate: Gate) extends Actor with ActorLogging {
 
@@ -49,9 +52,6 @@ class GateActor(gate: Gate) extends Actor with ActorLogging {
 }
 
 object Gate {
-
-  def stage(g: Gate, name: String)(implicit system: ActorSystem): ActorRef =
-    system.actorOf(Props(new GateActor(g)), name)
 
   case class Forward(v: Variable)
   case class Backward(v: Variable)
