@@ -6,11 +6,11 @@ import botkop.Sentinel._
 import scorch.autograd.Variable
 import scorch.data.loader.DataLoader
 
-case class Sentinel(name: String = "sentinel",
-                    tdl: DataLoader,
+case class Sentinel(tdl: DataLoader,
                     vdl: DataLoader,
                     loss: (Variable, Variable) => Variable,
-                    evaluator: (Variable, Variable) => Double)
+                    evaluator: (Variable, Variable) => Double,
+                    name: String)
     extends Stageable {
   def stage(implicit system: ActorSystem): ActorRef =
     system.actorOf(Props(new SentinelActor(this)), name)

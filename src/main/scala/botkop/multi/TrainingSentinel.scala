@@ -1,7 +1,7 @@
-package botkop
+package botkop.multi
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
-import botkop.Gate.{Backward, Forward}
+import botkop.{DataIterator, Stageable}
 import botkop.Sentinel.Start
 import scorch.autograd.Variable
 import scorch.data.loader.DataLoader
@@ -18,11 +18,11 @@ class TrainingSentinelActor(sentinel: TrainingSentinel)
     with ActorLogging {
   import sentinel._
 
-  var wire: Wiring = _
+  var wire: MultiWire = _
   var supervisor: ActorRef = _
 
   override def receive: Receive = {
-    case initWire: Wiring =>
+    case initWire: MultiWire =>
       log.debug(s"received wire $initWire")
       wire = initWire
       supervisor = sender()
@@ -30,7 +30,7 @@ class TrainingSentinelActor(sentinel: TrainingSentinel)
     case Start =>
       val di = tdl.toIterator
       val (x, y) = di.next()
-      wire.next ! Forward(x)
+      wire.next.foreach(_ ! Forward(x))
       context become endPoint(y, di, 0)
 
     case u =>
@@ -42,7 +42,7 @@ class TrainingSentinelActor(sentinel: TrainingSentinel)
                  cumLoss: Double): Receive = {
     case _: Backward =>
       val (x, y) = batch
-      wire.next ! Forward(x)
+      wire.next.foreach(_ ! Forward(x))
       context become endPoint(y, di, cumLoss)
 
     case u =>
@@ -53,7 +53,7 @@ class TrainingSentinelActor(sentinel: TrainingSentinel)
     case Forward(yHat) =>
       val l = loss(yHat, y)
       l.backward()
-      wire.prev ! Backward(yHat.grad)
+      wire.prev.foreach(_ ! Backward(yHat.grad))
       val newLoss = cumLoss + l.data.squeeze()
 
       if (di.hasNext) {

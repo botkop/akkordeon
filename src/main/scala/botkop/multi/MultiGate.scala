@@ -1,24 +1,25 @@
-package botkop
+package botkop.multi
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
+import botkop.Stageable
 import scorch.autograd.Variable
 import scorch.nn.Module
 import scorch.optim.Optimizer
 
-case class Gate(module: Module, optimizer: Optimizer, name: String) extends Stageable {
+case class MultiGate(module: Module, optimizer: Optimizer, name: String)
+    extends Stageable {
   def stage(implicit system: ActorSystem): ActorRef =
-    system.actorOf(Props(new GateActor(this)), name)
+    system.actorOf(Props(new MultiGateActor(this)), name)
 }
 
-class GateActor(gate: Gate) extends Actor with ActorLogging {
+class MultiGateActor(gate: MultiGate) extends Actor with ActorLogging {
 
   import gate._
-  import botkop.Gate._
 
-  var wire: Wiring = _
+  var wire: MultiWire = _
 
   override def receive: Receive = {
-    case initWire: Wiring =>
+    case initWire: MultiWire =>
       log.debug(s"received wire $initWire")
       this.wire = initWire
       context become forwardHandle
@@ -29,10 +30,10 @@ class GateActor(gate: Gate) extends Actor with ActorLogging {
   def forwardHandle: Receive = {
     case Forward(v) =>
       val result = module(v)
-      wire.next ! Forward(result)
+      wire.next.foreach(_ ! Forward(result))
       context become backwardHandle(v, result)
-    case Eval(x, y) =>
-      wire.next ! Eval(module(x), y)
+    case Eval(x) =>
+      wire.next.foreach(_ ! Eval(module(x)))
     case u =>
       log.error(s"unknown message $u")
   }
@@ -41,22 +42,12 @@ class GateActor(gate: Gate) extends Actor with ActorLogging {
     case Backward(g) =>
       optimizer.zeroGrad()
       output.backward(g)
-      wire.prev ! Backward(input.grad)
+      wire.prev.foreach(_ ! Backward(input.grad))
       optimizer.step()
       context become forwardHandle
-    case Eval(x, y) =>
-      wire.next ! Eval(module(x), y)
+    case Eval(x) =>
+      wire.next.foreach(_ ! Eval(module(x)))
     case u =>
       log.error(s"unknown message $u")
-  }
-}
-
-object Gate {
-
-  case class Forward(v: Variable)
-  case class Backward(v: Variable)
-  case class Eval(x: Variable, y: Variable)
-  object Eval {
-    def apply(xy: (Variable, Variable)): Eval = Eval(xy._1, xy._2)
   }
 }

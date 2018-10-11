@@ -20,7 +20,7 @@ object Wiring {
   def wire(sentinel: Sentinel, gates: List[Gate])(
       implicit system: ActorSystem): List[ActorRef] = {
     val s = sentinel.stage
-    val gs = gates.zipWithIndex.map { case (g, i) => g.stage }
+    val gs = gates.map(g => g.stage)
     wire(s, gs)
   }
 

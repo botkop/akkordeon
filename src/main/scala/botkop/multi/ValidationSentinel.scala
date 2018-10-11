@@ -1,8 +1,9 @@
-package botkop
+package botkop.multi
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import botkop.Sentinel.Start
-import botkop.ValidationSentinel.{Eval, EvalResult}
+import botkop.multi.ValidationSentinel.{Eval, EvalResult}
+import botkop.{DataIterator, Stageable, Wiring}
 import scorch.autograd.Variable
 import scorch.data.loader.DataLoader
 
@@ -55,9 +56,4 @@ class ValidationSentinelActor(sentinel: ValidationSentinel)
         context become receive
       }
   }
-}
-
-object ValidationSentinel {
-  case class Eval(v: Variable)
-  case class EvalResult(loss: Double, eval: Double)
 }
