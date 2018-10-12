@@ -1,9 +1,9 @@
-package botkop.multi
+package botkop.akkordeon.multi
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
-import botkop.Sentinel.Start
-import botkop.multi.ValidationSentinel.{Eval, EvalResult}
-import botkop.{DataIterator, Stageable, Wiring}
+import botkop.akkordeon.Sentinel.Start
+import botkop.akkordeon.{DataIterator, Stageable, Wiring}
+import botkop.multi._
 import scorch.autograd.Variable
 import scorch.data.loader.DataLoader
 

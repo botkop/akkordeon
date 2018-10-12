@@ -1,19 +1,22 @@
-package botkop
+package botkop.akkordeon
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import scorch.autograd.Variable
 import scorch.nn.Module
 import scorch.optim.Optimizer
 
-case class Gate(module: Module, optimizer: Optimizer, name: String) extends Stageable {
+import scala.concurrent.Future
+
+case class Gate(module: Module, optimizer: Optimizer, name: String)
+    extends Stageable {
   def stage(implicit system: ActorSystem): ActorRef =
     system.actorOf(Props(new GateActor(this)), name)
 }
 
 class GateActor(gate: Gate) extends Actor with ActorLogging {
 
+  import Gate._
   import gate._
-  import botkop.Gate._
 
   var wire: Wiring = _
 
@@ -42,7 +45,7 @@ class GateActor(gate: Gate) extends Actor with ActorLogging {
       optimizer.zeroGrad()
       output.backward(g)
       wire.prev ! Backward(input.grad)
-      optimizer.step()
+      Future(optimizer.step())(context.dispatcher)
       context become forwardHandle
     case Eval(x, y) =>
       wire.next ! Eval(module(x), y)
@@ -52,7 +55,6 @@ class GateActor(gate: Gate) extends Actor with ActorLogging {
 }
 
 object Gate {
-
   case class Forward(v: Variable)
   case class Backward(v: Variable)
   case class Eval(x: Variable, y: Variable)

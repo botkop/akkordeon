@@ -1,14 +1,11 @@
-package botkop.multi
+package botkop.akkordeon.multi
 
 import akka.actor.ActorSystem
-import botkop.makeNet
 import scorch.data.loader.DataLoader
 import scorch._
-import botkop._
+import botkop.akkordeon._
 
-import scala.collection.convert.Wrappers.MutableBufferWrapper
-
-object MultiAkkordeon extends App {
+object MultiAkkordeonApp extends App {
 
   implicit val system: ActorSystem = ActorSystem("akkordeon")
   val lr = 0.01
@@ -26,6 +23,5 @@ object MultiAkkordeon extends App {
   val gates = net.map(_.stage)
 
   MultiWire.wire(sentinels, gates)
-
 
 }

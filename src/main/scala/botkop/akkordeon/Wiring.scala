@@ -1,4 +1,4 @@
-package botkop
+package botkop.akkordeon
 
 import akka.actor.{ActorRef, ActorSystem}
 

@@ -1,8 +1,8 @@
-package botkop
+package botkop.akkordeon
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
-import botkop.Gate.{Backward, Eval, Forward}
-import botkop.Sentinel._
+import botkop.akkordeon.Gate.{Backward, Eval, Forward}
+import botkop.akkordeon.Sentinel._
 import scorch.autograd.Variable
 import scorch.data.loader.DataLoader
 

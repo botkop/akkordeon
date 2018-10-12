@@ -1,13 +1,13 @@
-package botkop
+package botkop.akkordeon
 
 import akka.actor.ActorSystem
-import botkop.Sentinel.Start
+import Sentinel.Start
 import scorch._
 import scorch.data.loader.DataLoader
 
 import scala.language.postfixOps
 
-object Akkordeon extends App {
+object AkkordeonApp extends App {
 
   implicit val system: ActorSystem = ActorSystem("akkordeon")
 

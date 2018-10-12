@@ -1,12 +1,14 @@
+package botkop
+
+import botkop.{numsca => ns}
+import scorch._
 import scorch.autograd.Variable
 import scorch.nn.{Linear, Module}
 import scorch.optim.SGD
-import scorch._
-import botkop.{numsca => ns}
 
 import scala.language.postfixOps
 
-package object botkop {
+package object akkordeon {
 
   type DataIterator = Iterator[(Variable, Variable)]
 

@@ -1,7 +1,8 @@
-package botkop.multi
+package botkop.akkordeon.multi
 
-import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
-import botkop.Stageable
+import akka.actor._
+import botkop.akkordeon.Stageable
+import botkop.multi._
 import scorch.autograd.Variable
 import scorch.nn.Module
 import scorch.optim.Optimizer
