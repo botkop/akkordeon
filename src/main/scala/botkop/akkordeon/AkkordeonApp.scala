@@ -1,7 +1,6 @@
 package botkop.akkordeon
 
 import akka.actor.ActorSystem
-import Sentinel.Start
 import scorch._
 import scorch.data.loader.DataLoader
 

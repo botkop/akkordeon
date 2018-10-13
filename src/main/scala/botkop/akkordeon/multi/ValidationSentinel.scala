@@ -1,8 +1,7 @@
 package botkop.akkordeon.multi
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
-import botkop.akkordeon.Sentinel.Start
-import botkop.akkordeon.{DataIterator, Stageable, Wiring}
+import botkop.akkordeon.{DataIterator, Stageable, Start, Wiring}
 import botkop.multi._
 import scorch.autograd.Variable
 import scorch.data.loader.DataLoader

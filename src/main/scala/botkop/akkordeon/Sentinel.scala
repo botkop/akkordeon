@@ -1,8 +1,6 @@
 package botkop.akkordeon
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
-import botkop.akkordeon.Gate.{Backward, Eval, Forward}
-import botkop.akkordeon.Sentinel._
 import scorch.autograd.Variable
 import scorch.data.loader.DataLoader
 
@@ -94,6 +92,3 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
   }
 }
 
-object Sentinel {
-  case object Start
-}

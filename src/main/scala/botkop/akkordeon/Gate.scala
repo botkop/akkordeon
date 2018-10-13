@@ -10,10 +10,10 @@ import scala.concurrent.Future
 case class Gate(module: Module, optimizer: Optimizer, name: String)
     extends Stageable {
   def stage(implicit system: ActorSystem): ActorRef =
-    system.actorOf(Props(new GateActor(this)), name)
+    system.actorOf(Props(new FlipFlopGateActor(this)), name)
 }
 
-class GateActor(gate: Gate) extends Actor with ActorLogging {
+class FlipFlopGateActor(gate: Gate) extends Actor with ActorLogging {
 
   import Gate._
   import gate._
@@ -54,11 +54,4 @@ class GateActor(gate: Gate) extends Actor with ActorLogging {
   }
 }
 
-object Gate {
-  case class Forward(v: Variable)
-  case class Backward(v: Variable)
-  case class Eval(x: Variable, y: Variable)
-  object Eval {
-    def apply(xy: (Variable, Variable)): Eval = Eval(xy._1, xy._2)
-  }
-}
+
