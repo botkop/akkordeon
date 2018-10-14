@@ -36,35 +36,34 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
       log.error(s"unknown message $u")
   }
 
-  def beginPoint(di: DataIterator,
-                 batch: (Variable, Variable),
-                 cumLoss: Double = 0): Receive = {
+  def beginPoint(di: DataIterator, batch: (Variable, Variable)): Receive = {
     case msg @ (Start | _: Backward) =>
       if (msg == Start) {
         epoch += 1
         epochStartTime = System.currentTimeMillis()
+        trainingLoss = 0
       }
       val (x, y) = batch
       wire.next ! Forward(x)
-      context become endPoint(y, di, cumLoss)
+      context become endPoint(y, di)
 
     case u =>
       log.error(s"beginPoint: unknown message $u")
   }
 
-  def endPoint(y: Variable, di: DataIterator, cumLoss: Double): Receive = {
+  def endPoint(y: Variable, di: DataIterator): Receive = {
     case Forward(yHat) =>
       val l = loss(yHat, y)
       l.backward()
       wire.prev ! Backward(yHat.grad)
-      val newLoss = cumLoss + l.data.squeeze()
+      trainingLoss += l.data.squeeze()
 
       if (di.hasNext) {
-        context become beginPoint(di, di.next(), newLoss)
+        context become beginPoint(di, di.next())
       } else {
         // end of epoch
         // store training loss for this epoch
-        trainingLoss = newLoss / tdl.numBatches
+        trainingLoss /= tdl.numBatches
         epochDuration = (System.currentTimeMillis() - epochStartTime) / 1000
         evaluate()
       }

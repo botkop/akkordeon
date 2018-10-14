@@ -11,6 +11,8 @@ object AkkordeonApp extends App {
 
   implicit val system: ActorSystem = ActorSystem("akkordeon")
 
+  botkop.numsca.rand.setSeed(231L)
+
   val lr = 0.01
   val imageSize: Int = 28 * 28
 
@@ -25,4 +27,3 @@ object AkkordeonApp extends App {
 
   ring.head ! Start
 }
-
