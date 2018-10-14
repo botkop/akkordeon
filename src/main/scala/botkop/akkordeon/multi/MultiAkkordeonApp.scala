@@ -4,6 +4,7 @@ import akka.actor.ActorSystem
 import scorch.data.loader.DataLoader
 import scorch._
 import botkop.akkordeon._
+import botkop.multi.Start
 
 object MultiAkkordeonApp extends App {
 
@@ -23,5 +24,7 @@ object MultiAkkordeonApp extends App {
   val gates = net.map(_.stage)
 
   MultiWire.wire(sentinels, gates)
+
+  sentinels.foreach(_ ! Start)
 
 }

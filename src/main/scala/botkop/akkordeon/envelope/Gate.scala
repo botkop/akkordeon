@@ -1,6 +1,7 @@
-package botkop.akkordeon
+package botkop.akkordeon.envelope
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
+import botkop.akkordeon.Stageable
 import scorch.autograd.Variable
 import scorch.nn.Module
 import scorch.optim.Optimizer
@@ -8,50 +9,46 @@ import scorch.optim.Optimizer
 import scala.concurrent.Future
 
 case class Gate(module: Module, optimizer: Optimizer, name: String)
-    extends Stageable {
+  extends Stageable {
   def stage(implicit system: ActorSystem): ActorRef =
-    system.actorOf(Props(new FlipFlopGateActor(this)), name)
+    system.actorOf(Props(new GateActor(this)), name)
 }
 
-class FlipFlopGateActor(gate: Gate) extends Actor with ActorLogging {
-
-  import Gate._
+class GateActor(gate: Gate) extends Actor with ActorLogging {
   import gate._
-
-  var wire: Wiring = _
+  var wire: Wire = _
 
   override def receive: Receive = {
-    case initWire: Wiring =>
-      log.debug(s"received wire $initWire")
-      this.wire = initWire
+    case w: Wire =>
+      log.debug(s"received wire $w")
+      this.wire = w
       context become forwardHandle
     case u =>
       log.error(s"unknown message $u")
   }
 
   def forwardHandle: Receive = {
-    case Forward(v) =>
+    case Forward(v, sentinel) =>
       val result = module(v)
-      wire.next ! Forward(result)
+      wire.next.getOrElse(sentinel) ! Forward(result, sentinel)
       context become backwardHandle(v, result)
-    case Eval(x, y) =>
-      wire.next ! Eval(module(x), y)
+    case Eval(x, sentinel) =>
+      wire.next.getOrElse(sentinel) ! Eval(module(x), sentinel)
     case u =>
       log.error(s"unknown message $u")
   }
 
   def backwardHandle(input: Variable, output: Variable): Receive = {
-    case Backward(g) =>
+    case Backward(g, sentinel) =>
       optimizer.zeroGrad()
       output.backward(g)
-      wire.prev ! Backward(input.grad)
+      wire.prev.getOrElse(sentinel) ! Backward(input.grad, sentinel)
       Future(optimizer.step())(context.dispatcher)
       context become forwardHandle
-    case Eval(x, y) =>
-      wire.next ! Eval(module(x), y)
+    case Eval(x, sentinel) =>
+      wire.next.getOrElse(sentinel) ! Eval(module(x), sentinel)
     case u =>
       log.error(s"unknown message $u")
   }
+
 }
-
-

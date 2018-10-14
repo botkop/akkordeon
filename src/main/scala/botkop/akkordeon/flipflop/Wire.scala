@@ -1,39 +1,40 @@
-package botkop.akkordeon
+package botkop.akkordeon.flipflop
 
 import akka.actor.{ActorRef, ActorSystem}
+import botkop.akkordeon.Stageable
 
-case class Wiring(prev: ActorRef, next: ActorRef)
+case class Wire(prev: ActorRef, next: ActorRef)
 
-object Wiring {
+object Wire {
 
-  def wire(sentinel: ActorRef, gates: List[ActorRef]): List[ActorRef] = {
+  def connect(sentinel: ActorRef, gates: List[ActorRef]): List[ActorRef] = {
     gates.zipWithIndex.foreach {
       case (g, i) =>
         val prev = if (i > 0) gates(i - 1) else sentinel
         val next = if (i + 1 < gates.length) gates(i + 1) else sentinel
-        g ! Wiring(prev, next)
+        g ! Wire(prev, next)
     }
-    sentinel ! Wiring(gates.last, gates.head)
+    sentinel ! Wire(gates.last, gates.head)
     sentinel :: gates
   }
 
-  def wire(sentinel: Sentinel, gates: List[Gate])(
+  def connect(sentinel: Sentinel, gates: List[Gate])(
       implicit system: ActorSystem): List[ActorRef] = {
     val s = sentinel.stage
     val gs = gates.map(g => g.stage)
-    wire(s, gs)
+    connect(s, gs)
   }
 
-  def wire(sentinel: Sentinel, gates: Gate*)(
+  def connect(sentinel: Sentinel, gates: Gate*)(
       implicit system: ActorSystem): List[ActorRef] =
-    wire(sentinel, gates.toList)
+    connect(sentinel, gates.toList)
 
-  def wire(stageables: List[Stageable])(
+  def connect(stageables: List[Stageable])(
       implicit system: ActorSystem): List[ActorRef] = {
     val ss = stageables.map(_.stage)
     val sentinel = ss.head
     val gates = ss.tail
-    wire(sentinel, gates)
+    connect(sentinel, gates)
   }
 
 }

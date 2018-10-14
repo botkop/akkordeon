@@ -1,7 +1,7 @@
 package botkop.akkordeon.multi
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
-import botkop.akkordeon.{DataIterator, Stageable, Start, Wiring}
+import botkop.akkordeon.{DataIterator, Stageable}
 import botkop.multi._
 import scorch.autograd.Variable
 import scorch.data.loader.DataLoader
@@ -21,18 +21,18 @@ class ValidationSentinelActor(sentinel: ValidationSentinel)
 
   import sentinel._
 
-  var wire: Wiring = _
+  var wire: MultiWire = _
   var supervisor: ActorRef = _
 
   override def receive: Receive = {
-    case initWire: Wiring =>
-      log.debug(s"received wire $initWire")
-      wire = initWire
+    case w: MultiWire =>
+      log.debug(s"received wire $w")
+      wire = w
       supervisor = sender()
     case Start =>
       val vi = vdl.toIterator
       val (x, y) = vi.next()
-      wire.next ! Eval(x)
+      for (w <- wire.next) { w ! Eval(x) }
       context become endState(y: Variable, vi, vi.next(), 0, 0)
     case u =>
       log.error(s"unknown message $u")
@@ -48,7 +48,7 @@ class ValidationSentinelActor(sentinel: ValidationSentinel)
       val e = cumEval + evaluator(yHat, y)
       if (vi.hasNext) {
         val (x, y) = nextBatch
-        wire.next ! Eval(x)
+        for (w <- wire.next) { w ! Eval(x) }
         context become endState(y: Variable, vi, vi.next(), l, e)
       } else {
         supervisor ! EvalResult(l / vdl.numBatches, e / vdl.numBatches)

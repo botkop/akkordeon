@@ -1,6 +1,7 @@
-package botkop.akkordeon
+package botkop.akkordeon.flipflop
 
 import akka.actor.ActorSystem
+import botkop.akkordeon.{accuracy, makeNet}
 import scorch._
 import scorch.data.loader.DataLoader
 
@@ -20,7 +21,7 @@ object AkkordeonApp extends App {
   val vdl: DataLoader = DataLoader.instance("mnist", "dev", batchSize)
 
   val s = Sentinel(tdl, vdl, softmaxLoss, accuracy, "sentinel")
-  val ring = Wiring.wire(s, net)
+  val ring = Wire.connect(s, net)
 
   ring.head ! Start
 }
