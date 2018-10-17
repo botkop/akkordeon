@@ -41,20 +41,20 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
       log.error(s"unknown message $u")
   }
 
-def startPoint(batch: (Variable, Variable)): Receive = {
-  case msg @ (Start | _: Backward) =>
-    if (msg == Start) { // new epoch
-      epoch += 1
-      epochStartTime = System.currentTimeMillis()
-      trainingLoss = 0
-    }
-    val (x, y) = batch
-    wire.next ! Forward(x)
-    context become endPoint(y)
+  def startPoint(batch: (Variable, Variable)): Receive = {
+    case msg @ (Start | _: Backward) =>
+      if (msg == Start) { // new epoch
+        epoch += 1
+        epochStartTime = System.currentTimeMillis()
+        trainingLoss = 0
+      }
+      val (x, y) = batch
+      wire.next ! Forward(x)
+      context become endPoint(y)
 
-  case u =>
-    log.error(s"beginPoint: unknown message $u")
-}
+    case u =>
+      log.error(s"beginPoint: unknown message $u")
+  }
 
   def endPoint(y: Variable): Receive = {
     case Forward(yHat) =>
@@ -83,36 +83,36 @@ def startPoint(batch: (Variable, Variable)): Receive = {
     context become validationHandler(y)
   }
 
-def validationHandler(y: Variable): Receive = {
+  def validationHandler(y: Variable): Receive = {
 
-  case Validate(x) =>
-    validationLoss += loss(x, y).data.squeeze()
-    validationScore += evaluator(x, y)
+    case Validate(x) =>
+      validationLoss += loss(x, y).data.squeeze()
+      validationScore += evaluator(x, y)
 
-    if (validationDataIterator.hasNext) {
-      val (x, y) = validationDataIterator.next()
-      wire.next ! Validate(x)
-      context become validationHandler(y)
-    } else {
-      validationLoss /= validationDataLoader.numBatches
-      validationScore /= validationDataLoader.numBatches
+      if (validationDataIterator.hasNext) {
+        val (x, y) = validationDataIterator.next()
+        wire.next ! Validate(x)
+        context become validationHandler(y)
+      } else {
+        validationLoss /= validationDataLoader.numBatches
+        validationScore /= validationDataLoader.numBatches
 
-      println(
-        f"epoch: $epoch%5d " +
-          f"trn_loss: $trainingLoss%9.6f " +
-          f"val_loss: $validationLoss%9.6f " +
-          f"score: $validationScore%9.6f " +
-          f"duration: ${epochDuration}s")
+        println(
+          f"epoch: $epoch%5d " +
+            f"trn_loss: $trainingLoss%9.6f " +
+            f"val_loss: $validationLoss%9.6f " +
+            f"score: $validationScore%9.6f " +
+            f"duration: ${epochDuration}s")
 
-      testDataIterator = testDataLoader.iterator
-      self ! Start
-      context become startPoint(testDataIterator.next())
-    }
+        testDataIterator = testDataLoader.iterator
+        self ! Start
+        context become startPoint(testDataIterator.next())
+      }
 
-  case _: Backward => // ignore, this is the backprop of the last forward message
+    case _: Backward => // ignore, this is the backprop of the last forward message
 
-  case u =>
-    log.error(s"evalHandler: unknown message $u")
-}
+    case u =>
+      log.error(s"evalHandler: unknown message $u")
+  }
 
 }

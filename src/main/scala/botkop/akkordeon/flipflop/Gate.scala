@@ -51,4 +51,3 @@ class GateActor(gate: Gate) extends Actor with ActorLogging {
       log.error(s"unknown message $u")
   }
 }
-
