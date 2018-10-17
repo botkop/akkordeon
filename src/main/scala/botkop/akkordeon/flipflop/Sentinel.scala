@@ -5,8 +5,8 @@ import botkop.akkordeon.{DataIterator, Stageable}
 import scorch.autograd.Variable
 import scorch.data.loader.DataLoader
 
-case class Sentinel(tdl: DataLoader,
-                    vdl: DataLoader,
+case class Sentinel(testDataLoader: DataLoader,
+                    validationDataLoader: DataLoader,
                     loss: (Variable, Variable) => Variable,
                     evaluator: (Variable, Variable) => Double,
                     name: String)
@@ -21,88 +21,98 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
 
   var wire: Wire = _
   var epoch = 0
-  var trainingLoss = 0.0 // training loss of an epoch
   var epochStartTime = 0L
   var epochDuration = 0L
+
+  var trainingLoss = 0.0
+  var validationLoss = 0.0
+  var validationScore = 0.0
+
+  var testDataIterator: DataIterator = testDataLoader.iterator
+  var validationDataIterator: DataIterator = _
 
   override def receive: Receive = {
     case w: Wire =>
       log.debug(s"received wire $w")
       wire = w
-      val di = tdl.toIterator
-      context become beginPoint(di, di.next())
+      context become startPoint(testDataIterator.next())
 
     case u =>
       log.error(s"unknown message $u")
   }
 
-  def beginPoint(di: DataIterator, batch: (Variable, Variable)): Receive = {
-    case msg @ (Start | _: Backward) =>
-      if (msg == Start) {
-        epoch += 1
-        epochStartTime = System.currentTimeMillis()
-        trainingLoss = 0
-      }
-      val (x, y) = batch
-      wire.next ! Forward(x)
-      context become endPoint(y, di)
+def startPoint(batch: (Variable, Variable)): Receive = {
+  case msg @ (Start | _: Backward) =>
+    if (msg == Start) { // new epoch
+      epoch += 1
+      epochStartTime = System.currentTimeMillis()
+      trainingLoss = 0
+    }
+    val (x, y) = batch
+    wire.next ! Forward(x)
+    context become endPoint(y)
 
-    case u =>
-      log.error(s"beginPoint: unknown message $u")
-  }
+  case u =>
+    log.error(s"beginPoint: unknown message $u")
+}
 
-  def endPoint(y: Variable, di: DataIterator): Receive = {
+  def endPoint(y: Variable): Receive = {
     case Forward(yHat) =>
       val l = loss(yHat, y)
       l.backward()
       wire.prev ! Backward(yHat.grad)
       trainingLoss += l.data.squeeze()
 
-      if (di.hasNext) {
-        context become beginPoint(di, di.next())
+      if (testDataIterator.hasNext) {
+        context become startPoint(testDataIterator.next())
       } else {
-        // end of epoch
-        // store training loss for this epoch
-        trainingLoss /= tdl.numBatches
-        epochDuration = (System.currentTimeMillis() - epochStartTime) / 1000
-        evaluate()
+        endOfEpoch()
       }
   }
 
-  def evaluate(): Unit = {
-    val vi = vdl.iterator
-    val (x, y) = vi.next()
-    wire.next ! Eval(x)
-    context become evalHandler(y, vi)
+  def endOfEpoch(): Unit = {
+    epochDuration = (System.currentTimeMillis() - epochStartTime) / 1000
+    trainingLoss /= testDataLoader.numBatches
+
+    validationLoss = 0
+    validationScore = 0
+
+    validationDataIterator = validationDataLoader.iterator
+    val (x, y) = validationDataIterator.next()
+    wire.next ! Validate(x)
+    context become validationHandler(y)
   }
 
-  def evalHandler(y: Variable,
-                  vi: DataIterator,
-                  cumLoss: Double = 0,
-                  cumEval: Double = 0): Receive = {
+def validationHandler(y: Variable): Receive = {
 
-    case Eval(x) =>
-      val l = cumLoss + loss(x, y).data.squeeze()
-      val e = cumEval + evaluator(x, y)
-      if (vi.hasNext) {
-        val (x, y) = vi.next()
-        wire.next ! Eval(x)
-        context become evalHandler(y, vi, l, e)
-      } else {
-        val valLoss = l / vdl.numBatches
-        val eval = e / vdl.numBatches
-        println(
-          f"epoch: $epoch%5d trn_loss: $trainingLoss%9.6f val_loss: $valLoss%9.6f eval: $eval%9.6f duration: ${epochDuration}s")
+  case Validate(x) =>
+    validationLoss += loss(x, y).data.squeeze()
+    validationScore += evaluator(x, y)
 
-        val di = tdl.toIterator
-        self ! Start
-        context become beginPoint(di, di.next())
-      }
+    if (validationDataIterator.hasNext) {
+      val (x, y) = validationDataIterator.next()
+      wire.next ! Validate(x)
+      context become validationHandler(y)
+    } else {
+      validationLoss /= validationDataLoader.numBatches
+      validationScore /= validationDataLoader.numBatches
 
-    case _: Backward => // ignore
+      println(
+        f"epoch: $epoch%5d " +
+          f"trn_loss: $trainingLoss%9.6f " +
+          f"val_loss: $validationLoss%9.6f " +
+          f"score: $validationScore%9.6f " +
+          f"duration: ${epochDuration}s")
 
-    case u =>
-      log.error(s"evalHandler: unknown message $u")
-  }
+      testDataIterator = testDataLoader.iterator
+      self ! Start
+      context become startPoint(testDataIterator.next())
+    }
+
+  case _: Backward => // ignore, this is the backprop of the last forward message
+
+  case u =>
+    log.error(s"evalHandler: unknown message $u")
+}
 
 }

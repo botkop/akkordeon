@@ -6,5 +6,5 @@ package object flipflop {
   case object Start
   case class Forward(x: Variable)
   case class Backward(g: Variable)
-  case class Eval(x: Variable)
+  case class Validate(x: Variable)
 }

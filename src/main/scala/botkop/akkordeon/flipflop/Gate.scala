@@ -32,8 +32,8 @@ class GateActor(gate: Gate) extends Actor with ActorLogging {
       val result = module(x)
       wire.next ! Forward(result)
       context become backwardHandle(x, result)
-    case Eval(x) =>
-      wire.next ! Eval(module(x))
+    case Validate(x) =>
+      wire.next ! Validate(module(x))
     case u =>
       log.error(s"unknown message $u")
   }
@@ -45,8 +45,8 @@ class GateActor(gate: Gate) extends Actor with ActorLogging {
       wire.prev ! Backward(input.grad)
       optimizer.step()
       context become forwardHandle
-    case Eval(x) =>
-      wire.next ! Eval(module(x))
+    case Validate(x) =>
+      wire.next ! Validate(module(x))
     case u =>
       log.error(s"unknown message $u")
   }
