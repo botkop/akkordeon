@@ -29,17 +29,18 @@ class GateActor(gate: Gate) extends Actor with ActorLogging {
 
   def messageHandler(activations: List[(Variable, Variable)]): Receive = {
 
-    case Validate(x, y) =>
-      wire.next ! Validate(module(x), y)
+    case Validate(x) =>
+      wire.next ! Validate(module(x))
 
     case Forward(x, y) =>
       val result = module(x)
       wire.next ! Forward(result, y)
-      context become messageHandler((x, result) :: activations)
+      context become messageHandler(activations :+ (x, result))
 
     case Backward(g) =>
       activations match {
         case (input, output) :: tail =>
+          // todo average grads, or divide learning rate by parallelism ?
           optimizer.zeroGrad()
           output.backward(g)
           wire.prev ! Backward(input.grad)
