@@ -12,22 +12,23 @@ case class DataProvider(dl: DataLoader, name: String) extends Stageable {
 
 class DataProviderActor(dp: DataProvider) extends Actor with ActorLogging {
 
+  import dp._
+
   override def receive: Receive = {
     val ndi = dp.dl.iterator
     provide(ndi, ndi.next(), 1, System.currentTimeMillis())
   }
 
   def provide(di: DataIterator, nextBatch: (Variable, Variable), epoch: Int, startTime: Long): Receive = {
-    case NextBatch =>
-      sender() ! Batch(nextBatch)
+    case NextBatch(r, f) =>
+      r forward f(Batch(nextBatch))
       if (di.hasNext) {
         context become provide(di, di.next(), epoch, startTime)
       } else {
         val duration = System.currentTimeMillis() - startTime
-        // log.info(f"epoch: $epoch%5d duration: ${duration}ms")
-        sender() ! Epoch(epoch, duration)
+        sender() ! Epoch(name, epoch, duration)
 
-        val ndi = dp.dl.iterator
+        val ndi = dl.iterator
         context become provide(ndi, ndi.next(), epoch + 1, System.currentTimeMillis())
       }
   }

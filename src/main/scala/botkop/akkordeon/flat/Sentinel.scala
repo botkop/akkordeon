@@ -1,11 +1,12 @@
 package botkop.akkordeon.flat
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
-import botkop.akkordeon.{DataIterator, Stageable}
+import botkop.akkordeon.Stageable
 import scorch.autograd.Variable
+import scorch.data.loader.DataLoader
 
-case class Sentinel(trainingDataLoader: ActorRef,
-                    validationDataLoader: ActorRef,
+case class Sentinel(trainingDataLoader: DataLoader,
+                    validationDataLoader: DataLoader,
                     loss: (Variable, Variable) => Variable,
                     evaluator: (Variable, Variable) => Double,
                     name: String)
@@ -22,27 +23,38 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
 
   var trainingLoss = 0.0
   var numTrainingBatches = 0
+
   var validationLoss = 0.0
   var validationScore = 0.0
+  var numValidationBatches = 0
+
+  val tdl: ActorRef =
+    DataProvider(trainingDataLoader, "training").stage(context.system)
+  val vdl: ActorRef =
+    DataProvider(validationDataLoader, "validation").stage(context.system)
+
+  val b2t: Batch => Forward = b => Forward(b.x, b.y)
+  lazy val nextTrainingBatch = NextBatch(wire.next, b2t)
+
+  val b2v: Batch => Validate = b => Validate(b.x, b.y)
+  lazy val nextValidationBatch = NextBatch(wire.next, b2v)
 
   override def receive: Receive = {
     case w: Wire =>
       log.debug(s"received wire $w")
       wire = w
-      context become trainingHandler
+      context become messageHandler
 
     case u =>
       log.error(s"receive: unknown message ${u.getClass.getName}")
   }
 
-  def trainingHandler: Receive = {
+  def messageHandler: Receive = {
     case Start =>
-      (1 to 4).foreach { _ =>
-        trainingDataLoader ! NextBatch
+      (1 to 3).foreach { _ =>
+        tdl ! nextTrainingBatch
       }
-
-    case Batch(x, y) =>
-      wire.next ! Forward(x, y)
+      vdl ! nextValidationBatch
 
     case Forward(yHat, y) =>
       val l = loss(yHat, y)
@@ -52,20 +64,48 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
       numTrainingBatches += 1
 
     case Backward(_) =>
-      trainingDataLoader ! NextBatch
+      tdl ! nextTrainingBatch
 
-    case Epoch(epoch, duration) =>
+    case Epoch("training", epoch, duration) =>
       trainingLoss /= numTrainingBatches
+      validationLoss /= numValidationBatches
+      validationScore /= numValidationBatches
       log.info(
         f"epoch: $epoch%5d " +
           f"trn_loss: $trainingLoss%9.6f " +
-          f"duration: ${duration}s")
+          f"val_loss: $validationLoss%9.6f " +
+          f"val_score: $validationScore%9.6f " +
+          f"duration: ${duration}ms")
+
       numTrainingBatches = 0
       trainingLoss = 0
 
+      numValidationBatches = 0
+      validationLoss = 0
+      validationScore = 0
+
+    case Validate(x, y) =>
+      vdl ! nextValidationBatch
+      numValidationBatches += 1
+      validationLoss += loss(x, y).data.squeeze()
+      validationScore += evaluator(x, y)
+
+    case Epoch("validation", epoch, duration) =>
+      /*
+      validationLoss /= numValidationBatches
+      validationScore /= numValidationBatches
+      log.info(
+        f"epoch: $epoch%5d " +
+          f"val_loss: $validationLoss%9.6f " +
+          f"val_score: $validationScore%9.6f " +
+          f"duration: ${duration}s")
+      numValidationBatches = 0
+      validationLoss = 0
+      validationScore = 0
+      */
+
     case u =>
       log.error(s"trainingHandler: unknown message ${u.getClass.getName}")
-
   }
 
 }

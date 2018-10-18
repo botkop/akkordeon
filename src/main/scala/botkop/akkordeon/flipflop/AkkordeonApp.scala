@@ -30,8 +30,7 @@ object AkkordeonApp extends App {
 
   ring.head ! Start
 
-
-  def makeNet(lr: Double, sizes: Int*): List[Gate] = {
+  def makeNet(lr: Double, sizes: Int*): List[Gate] =
     sizes
       .sliding(2, 1)
       .zipWithIndex
@@ -44,7 +43,6 @@ object AkkordeonApp extends App {
           val o = SGD(m.parameters, lr)
         Gate(m, o, s"g$i")
     } toList
-  }
 
   def accuracy(yHat: Variable, y: Variable): Double = {
     val guessed = ns.argmax(yHat.data, axis = 1)

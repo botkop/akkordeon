@@ -29,8 +29,8 @@ class GateActor(gate: Gate) extends Actor with ActorLogging {
 
   def messageHandler(activations: List[(Variable, Variable)]): Receive = {
 
-    case Validate(x) =>
-      wire.next ! Validate(module(x))
+    case Validate(x, y) =>
+      wire.next ! Validate(module(x), y)
 
     case Forward(x, y) =>
       val result = module(x)
