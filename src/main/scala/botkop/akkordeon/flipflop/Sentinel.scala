@@ -1,11 +1,11 @@
 package botkop.akkordeon.flipflop
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
-import botkop.akkordeon.{DataIterator, Stageable}
+import botkop.akkordeon.{DataIterator, Stageable, Wire}
 import scorch.autograd.Variable
 import scorch.data.loader.DataLoader
 
-case class Sentinel(testDataLoader: DataLoader,
+case class Sentinel(trainingDataLoader: DataLoader,
                     validationDataLoader: DataLoader,
                     loss: (Variable, Variable) => Variable,
                     evaluator: (Variable, Variable) => Double,
@@ -28,7 +28,7 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
   var validationLoss = 0.0
   var validationScore = 0.0
 
-  var testDataIterator: DataIterator = testDataLoader.iterator
+  var testDataIterator: DataIterator = trainingDataLoader.iterator
   var validationDataIterator: DataIterator = _
 
   override def receive: Receive = {
@@ -71,8 +71,7 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
   }
 
   def endOfEpoch(): Unit = {
-    epochDuration = (System.currentTimeMillis() - epochStartTime) / 1000
-    trainingLoss /= testDataLoader.numBatches
+    trainingLoss /= trainingDataLoader.numBatches
 
     validationLoss = 0
     validationScore = 0
@@ -97,6 +96,8 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
         validationLoss /= validationDataLoader.numBatches
         validationScore /= validationDataLoader.numBatches
 
+        epochDuration = (System.currentTimeMillis() - epochStartTime) / 1000
+
         println(
           f"epoch: $epoch%5d " +
             f"trn_loss: $trainingLoss%9.6f " +
@@ -104,7 +105,7 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
             f"score: $validationScore%9.6f " +
             f"duration: ${epochDuration}s")
 
-        testDataIterator = testDataLoader.iterator
+        testDataIterator = trainingDataLoader.iterator
         self ! Start
         context become startPoint(testDataIterator.next())
       }

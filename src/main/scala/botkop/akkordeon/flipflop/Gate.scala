@@ -1,7 +1,7 @@
 package botkop.akkordeon.flipflop
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
-import botkop.akkordeon.Stageable
+import botkop.akkordeon.{Stageable, Wire}
 import scorch.autograd.Variable
 import scorch.nn.Module
 import scorch.optim.Optimizer
