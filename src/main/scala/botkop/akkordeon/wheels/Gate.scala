@@ -1,7 +1,7 @@
 package botkop.akkordeon.wheels
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
-import botkop.akkordeon.Stageable
+import botkop.akkordeon.{Stageable, Wire}
 import scorch.autograd.Variable
 import scorch.nn.Module
 import scorch.optim.Optimizer
@@ -27,30 +27,30 @@ class GateActor(gate: Gate) extends Actor with ActorLogging {
       log.error(s"$name: receive: unknown message ${u.getClass.getName}")
   }
 
-  def messageHandler(activations: List[(Variable, Variable)]): Receive = {
+def messageHandler(activations: List[(Variable, Variable)]): Receive = {
 
-    case Validate(x, y) =>
-      wire.next ! Validate(module(x), y)
+  case Validate(x, y) =>
+    wire.next ! Validate(module(x), y)
 
-    case Forward(x, y) =>
-      val result = module(x)
-      wire.next ! Forward(result, y)
-      context become messageHandler(activations :+ (x, result))
+  case Forward(x, y) =>
+    val result = module(x)
+    wire.next ! Forward(result, y)
+    context become messageHandler(activations :+ (x, result))
 
-    case Backward(g) =>
-      activations match {
-        case (input, output) :: tail =>
-          optimizer.zeroGrad()
-          output.backward(g)
-          wire.prev ! Backward(input.grad)
-          optimizer.step()
-          context become messageHandler(tail)
-        case _ =>
-          log.error("backward message received but no activations registered")
-      }
+  case Backward(g) =>
+    activations match {
+      case (input, output) :: tail =>
+        optimizer.zeroGrad()
+        output.backward(g)
+        wire.prev ! Backward(input.grad)
+        optimizer.step()
+        context become messageHandler(tail)
+      case _ =>
+        log.error("backward message received but no activations registered")
+    }
 
-    case u =>
-      log.error(s"$name: messageHandler: unknown message ${u.getClass.getName}")
-  }
+  case u =>
+    log.error(s"$name: messageHandler: unknown message ${u.getClass.getName}")
+}
 
 }

@@ -1,6 +1,7 @@
 package botkop.akkordeon.wheels
 
 import akka.actor.ActorSystem
+import botkop.akkordeon.Stageable
 import botkop.{numsca => ns}
 import scorch._
 import scorch.autograd.Variable
@@ -24,7 +25,7 @@ object Akkordeon extends App {
   val vdl: DataLoader = DataLoader.instance("mnist", "dev", batchSize)
 
   val s = Sentinel(tdl, vdl, 4, 1, softmaxLoss, accuracy, "sentinel")
-  val ring = Wire.connect(s, net)
+  val ring = Stageable.connect(s :: net)
 
   ring.head ! Start
 
