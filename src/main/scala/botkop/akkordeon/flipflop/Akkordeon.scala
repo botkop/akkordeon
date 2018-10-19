@@ -10,7 +10,7 @@ import scorch.optim.SGD
 
 import scala.language.postfixOps
 
-object AkkordeonApp extends App {
+object Akkordeon extends App {
 
   implicit val system: ActorSystem = ActorSystem("akkordeon")
 

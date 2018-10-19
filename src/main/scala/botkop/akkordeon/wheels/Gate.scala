@@ -1,4 +1,4 @@
-package botkop.akkordeon.flat
+package botkop.akkordeon.wheels
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import botkop.akkordeon.Stageable
@@ -24,7 +24,7 @@ class GateActor(gate: Gate) extends Actor with ActorLogging {
       this.wire = w
       context become messageHandler(List.empty)
     case u =>
-      log.error(s"unknown message $u")
+      log.error(s"$name: receive: unknown message ${u.getClass.getName}")
   }
 
   def messageHandler(activations: List[(Variable, Variable)]): Receive = {
@@ -40,7 +40,6 @@ class GateActor(gate: Gate) extends Actor with ActorLogging {
     case Backward(g) =>
       activations match {
         case (input, output) :: tail =>
-          // todo average grads, or divide learning rate by parallelism ?
           optimizer.zeroGrad()
           output.backward(g)
           wire.prev ! Backward(input.grad)
@@ -51,7 +50,7 @@ class GateActor(gate: Gate) extends Actor with ActorLogging {
       }
 
     case u =>
-      log.error(s"unknown message $u")
+      log.error(s"$name: messageHandler: unknown message ${u.getClass.getName}")
   }
 
 }

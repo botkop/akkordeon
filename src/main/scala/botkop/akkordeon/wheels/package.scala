@@ -3,7 +3,7 @@ package botkop.akkordeon
 import akka.actor.ActorRef
 import scorch.autograd.Variable
 
-package object flat {
+package object wheels {
   case object Start
 
   trait Message

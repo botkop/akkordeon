@@ -1,4 +1,4 @@
-package botkop.akkordeon.flat
+package botkop.akkordeon.wheels
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import botkop.akkordeon.{DataIterator, Stageable}
@@ -15,11 +15,14 @@ class DataProviderActor(dp: DataProvider) extends Actor with ActorLogging {
   import dp._
 
   override def receive: Receive = {
-    val ndi = dp.dl.iterator
+    val ndi = dl.iterator
     provide(ndi, ndi.next(), 1, System.currentTimeMillis())
   }
 
-  def provide(di: DataIterator, nextBatch: (Variable, Variable), epoch: Int, startTime: Long): Receive = {
+  def provide(di: DataIterator,
+              nextBatch: (Variable, Variable),
+              epoch: Int,
+              startTime: Long): Receive = {
     case NextBatch(r, f) =>
       r forward f(Batch(nextBatch))
       if (di.hasNext) {
@@ -29,7 +32,10 @@ class DataProviderActor(dp: DataProvider) extends Actor with ActorLogging {
         sender() ! Epoch(name, epoch, duration)
 
         val ndi = dl.iterator
-        context become provide(ndi, ndi.next(), epoch + 1, System.currentTimeMillis())
+        context become provide(ndi,
+                               ndi.next(),
+                               epoch + 1,
+                               System.currentTimeMillis())
       }
   }
 }

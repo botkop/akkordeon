@@ -1,4 +1,4 @@
-package botkop.akkordeon.flat
+package botkop.akkordeon.wheels
 
 import akka.actor.{ActorRef, ActorSystem}
 import botkop.akkordeon.Stageable
