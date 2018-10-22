@@ -50,49 +50,49 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
       log.error(s"receive: unknown message ${u.getClass.getName}")
   }
 
-def messageHandler: Receive = {
-  case Start =>
-    1 to trainingConcurrency foreach (_ => tdl ! nextTrainingBatch)
-    1 to validationConcurrency foreach (_ => vdl ! nextValidationBatch)
+  def messageHandler: Receive = {
+    case Start =>
+      1 to trainingConcurrency foreach (_ => tdl ! nextTrainingBatch)
+      1 to validationConcurrency foreach (_ => vdl ! nextValidationBatch)
 
-  case Forward(yHat, y) =>
-    val l = loss(yHat, y)
-    l.backward()
-    wire.prev ! Backward(yHat.grad)
-    trainingLoss += l.data.squeeze()
-    numTrainingBatches += 1
+    case Forward(yHat, y) =>
+      val l = loss(yHat, y)
+      l.backward()
+      wire.prev ! Backward(yHat.grad)
+      trainingLoss += l.data.squeeze()
+      numTrainingBatches += 1
 
-  case Backward(_) =>
-    tdl ! nextTrainingBatch
+    case Backward(_) =>
+      tdl ! nextTrainingBatch
 
-  case Validate(x, y) =>
-    numValidationBatches += 1
-    validationLoss += loss(x, y).data.squeeze()
-    validationScore += evaluator(x, y)
-    if (numValidationBatches < validationDataLoader.numBatches)
-      vdl ! nextValidationBatch
+    case Validate(x, y) =>
+      numValidationBatches += 1
+      validationLoss += loss(x, y).data.squeeze()
+      validationScore += evaluator(x, y)
+      if (numValidationBatches < validationDataLoader.numBatches)
+        vdl ! nextValidationBatch
 
-  case Epoch("training", epoch, duration) =>
-    trainingLoss /= numTrainingBatches
-    validationLoss /= numValidationBatches
-    validationScore /= numValidationBatches
-    println(
-      f"epoch: $epoch%5d " +
-        f"trn_loss: $trainingLoss%9.6f " +
-        f"val_loss: $validationLoss%9.6f " +
-        f"val_score: $validationScore%9.6f " +
-        f"duration: ${duration}ms")
-    numTrainingBatches = 0
-    trainingLoss = 0
-    numValidationBatches = 0
-    validationLoss = 0
-    validationScore = 0
-    1 to validationConcurrency foreach (_ => vdl ! nextValidationBatch)
+    case Epoch("training", epoch, duration) =>
+      trainingLoss /= numTrainingBatches
+      validationLoss /= numValidationBatches
+      validationScore /= numValidationBatches
+      println(
+        f"epoch: $epoch%5d " +
+          f"trn_loss: $trainingLoss%9.6f " +
+          f"val_loss: $validationLoss%9.6f " +
+          f"val_score: $validationScore%9.6f " +
+          f"duration: ${duration}ms")
+      numTrainingBatches = 0
+      trainingLoss = 0
+      numValidationBatches = 0
+      validationLoss = 0
+      validationScore = 0
+      1 to validationConcurrency foreach (_ => vdl ! nextValidationBatch)
 
-  case Epoch("validation", _, _) => // ignore
+    case Epoch("validation", _, _) => // ignore
 
-  case u =>
-    log.error(s"trainingHandler: unknown message ${u.getClass.getName}")
-}
+    case u =>
+      log.error(s"trainingHandler: unknown message ${u.getClass.getName}")
+  }
 
 }
