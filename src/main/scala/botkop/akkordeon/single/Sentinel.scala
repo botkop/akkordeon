@@ -48,25 +48,36 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
       l.backward()
       wire.prev.get ! Backward(ar, yHat.grad, id)
       loss += l.data.squeeze()
+      scoreFunctions.zipWithIndex.foreach {
+        case (f, i) =>
+          scores(i) += f(yHat, y)
+      }
+
       numBatches += 1
 
     case _: Backward =>
       dl ! nextBatch
 
-    case Validate(_, x, y) =>
+    case Validate(_, yHat, y) =>
       numBatches += 1
-      loss += lossFunction(x, y).data.squeeze()
+      loss += lossFunction(yHat, y).data.squeeze()
+      scoreFunctions.zipWithIndex.foreach {
+        case (f, i) =>
+          scores(i) += f(yHat, y)
+      }
       if (numBatches < dataProvider.dl.numBatches)
         dl ! nextBatch
 
     case Epoch(epochName, epoch, duration) =>
       loss /= numBatches
+      scores.indices.foreach(i => scores(i) /= numBatches)
       println(
         f"$epochName%-10s epoch: $epoch%5d " +
           f"loss: $loss%9.6f " +
-          f"duration: ${duration}ms")
+          f"duration: ${duration}ms " + scores)
       loss = 0
       numBatches = 0
+      scores.indices.foreach(i => scores(i) = 0)
 
     case u =>
       log.error(s"messageHandler: unknown message ${u.getClass.getName}")
