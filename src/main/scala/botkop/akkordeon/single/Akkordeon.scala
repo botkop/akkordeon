@@ -1,10 +1,10 @@
-package botkop.akkordeon.hash
+package botkop.akkordeon.single
+
 
 import akka.actor.{ActorRef, ActorSystem}
 import botkop.{numsca => ns}
 import scorch._
 import scorch.autograd.Variable
-import scorch.data.loader.DataLoader
 import scorch.nn.{Linear, Module}
 import scorch.optim._
 
@@ -16,6 +16,7 @@ object Akkordeon extends App {
 
   ns.rand.setSeed(232L)
 
+  /*
   def makeSentinel(bs: Int, validate: Boolean, name: String): ActorRef = {
     val tdl: DataLoader = DataLoader.instance("mnist", "train", bs)
     val vdl: DataLoader = DataLoader.instance("mnist", "dev", bs)
@@ -27,6 +28,7 @@ object Akkordeon extends App {
       else None
     Sentinel(trainingComponents, validationComponents, name).stage
   }
+  */
 
   def makeNet(lr: Double, sizes: Int*): List[Gate] =
     sizes
@@ -52,24 +54,24 @@ object Akkordeon extends App {
   val gates = Stageable.connect(net)
   val batchSize = 512
 
-  val s1 = makeSentinel(batchSize, validate = true, "s1")
-  val s2 = makeSentinel(batchSize, validate = false, "s2")
-//  val s3 = makeSentinel(batchSize, validate = false, "s3")
-//  val s4 = makeSentinel(batchSize, validate = false, "s4")
-//  val s5 = makeSentinel(batchSize, validate = false, "s5")
-//  val s6 = makeSentinel(batchSize, validate = false, "s6")
+  val tdp1 = DataProvider("mnist", "train", batchSize, None, "tdp1")
+  val ts1 = Sentinel(tdp1, 1, softmaxLoss, "ts1").stage
+  ts1 ! Wire(Some(gates.last), Some(gates.head))
+  ts1 ! Start
 
-  s1 ! Wire(Some(gates.last), Some(gates.head))
-  s2 ! Wire(Some(gates.last), Some(gates.head))
-//  s3 ! Wire(Some(gates.last), Some(gates.head))
-//  s4 ! Wire(Some(gates.last), Some(gates.head))
-//  s5 ! Wire(Some(gates.last), Some(gates.head))
-//  s6 ! Wire(Some(gates.last), Some(gates.head))
+  val tdp2 = DataProvider("mnist", "train", batchSize, None, "tdp2")
+  val ts2 = Sentinel(tdp2, 1, softmaxLoss, "ts2").stage
+  ts2 ! Wire(Some(gates.last), Some(gates.head))
+  ts2 ! Start
 
-  s1 ! Start
-  s2 ! Start
-//  s3 ! Start
-//  s4 ! Start
-//  s5 ! Start
-//  s6 ! Start
+  val vdp = DataProvider("mnist", "dev", batchSize, None, "tdv")
+  val vs1 = Sentinel(vdp, 1, softmaxLoss, "vs1").stage
+  vs1 ! Wire(Some(gates.last), Some(gates.head))
+
+  while(true) {
+    Thread.sleep(20000)
+    vs1 ! Start
+  }
+
+
 }

@@ -1,13 +1,12 @@
 package botkop.akkordeon.hash
 
-import java.util.UUID
-
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import scorch.autograd.Variable
 import scorch.data.loader.DataLoader
 
 import scala.util.Random
 
+/*
 case class TrainingComponents(trainingDataLoader: DataLoader,
                               trainingConcurrency: Int,
                               loss: (Variable, Variable) => Variable)
@@ -15,9 +14,14 @@ case class TrainingComponents(trainingDataLoader: DataLoader,
 case class ValidationComponents(validationDataLoader: DataLoader,
                                 validationConcurrency: Int,
                                 evaluator: (Variable, Variable) => Double)
+*/
 
-case class Sentinel(trainer: TrainingComponents,
-                    validator: Option[ValidationComponents],
+case class SentinelComponents(dataLoader: DataLoader,
+                              concurrency: Int,
+                              f: (Variable, Variable) => Variable)
+
+case class Sentinel(trainer: SentinelComponents,
+                    validator: Option[SentinelComponents],
                     name: String)
     extends Stageable {
   def stage(implicit system: ActorSystem): ActorRef =
@@ -40,9 +44,9 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
   val dpvn = s"$name-validation"
 
   val tdl: ActorRef =
-    DataProvider(trainer.trainingDataLoader, dptn).stage(context.system)
+    DataProvider(trainer.dataLoader, dptn).stage(context.system)
   val vdl: Option[ActorRef] = validator.map { v =>
-    DataProvider(v.validationDataLoader, dpvn).stage(context.system)
+    DataProvider(v.dataLoader, dpvn).stage(context.system)
   }
 
   private val b2t = (b: Batch) => {
@@ -66,14 +70,14 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
 
   def messageHandler: Receive = {
     case Start =>
-      1 to trainer.trainingConcurrency foreach (_ => tdl ! nextTrainingBatch)
+      1 to trainer.concurrency foreach (_ => tdl ! nextTrainingBatch)
       if (validator.isDefined) {
-        1 to validator.get.validationConcurrency foreach (_ =>
+        1 to validator.get.concurrency foreach (_ =>
           vdl.get ! nextValidationBatch)
       }
 
     case Forward(id, ar, yHat, y) =>
-      val l = trainer.loss(yHat, y)
+      val l = trainer.f(yHat, y)
       l.backward()
       wire.prev.get ! Backward(id, ar, yHat.grad)
       trainingLoss += l.data.squeeze()
@@ -84,9 +88,9 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
 
     case Validate(_, x, y) if validator.isDefined =>
       numValidationBatches += 1
-      validationLoss += trainer.loss(x, y).data.squeeze()
-      validationScore += validator.get.evaluator(x, y)
-      if (numValidationBatches < validator.get.validationDataLoader.numBatches)
+      validationLoss += trainer.f(x, y).data.squeeze()
+      validationScore += validator.get.f(x, y).data.squeeze() // todo: heavy
+      if (numValidationBatches < validator.get.dataLoader.numBatches)
         vdl.get ! nextValidationBatch
 
     case Epoch(epochName, epoch, duration) if validator.isDefined =>
@@ -105,12 +109,12 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
         numValidationBatches = 0
         validationLoss = 0
         validationScore = 0
-        1 to validator.get.validationConcurrency foreach (_ =>
+        1 to validator.get.concurrency foreach (_ =>
           vdl.get ! nextValidationBatch)
       }
 
     case u =>
-      // log.error(s"messageHandler: unknown message ${u.getClass.getName}")
+    // log.error(s"messageHandler: unknown message ${u.getClass.getName}")
   }
 
 }
