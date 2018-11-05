@@ -1,11 +1,10 @@
 package botkop.akkordeon.single
 
-
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.ActorSystem
 import botkop.{numsca => ns}
 import scorch._
 import scorch.autograd.Variable
-import scorch.nn.{Linear, Module}
+import scorch.nn.{Dropout, Linear, Module}
 import scorch.optim._
 
 import scala.language.postfixOps
@@ -14,9 +13,9 @@ object Akkordeon extends App {
 
   implicit val system: ActorSystem = ActorSystem("akkordeon")
 
-  ns.rand.setSeed(232L)
+  ns.rand.setSeed(231L)
 
-  def makeNet(lr: Double, sizes: Int*): List[Gate] =
+  def makeNet(lr: Double, sizes: List[Int], drops: List[Double]): List[Gate] =
     sizes
       .sliding(2, 1)
       .zipWithIndex
@@ -24,40 +23,41 @@ object Akkordeon extends App {
         case (l, i) =>
           val m: Module = new Module() {
             val fc = Linear(l.head, l.last)
-            def forward(x: Variable): Variable = x ~> fc ~> relu
+            val drop = Dropout(drops(i))
+            def forward(x: Variable): Variable = x ~> fc ~> drop ~> relu
           }
-          val o = SGD(m.parameters, lr)
+          val o = Nesterov(m.parameters, lr)
         Gate(m, o, s"g$i")
     } toList
 
   def accuracy(yHat: Variable, y: Variable): Double = {
     val guessed = ns.argmax(yHat.data, axis = 1)
-    ns.mean(y.data == guessed) .squeeze()
+    ns.mean(y.data == guessed).squeeze()
   }
 
-  val lr = 0.03
-  val net = makeNet(lr, 28 * 28, 50, 20, 10)
+  def makeSentinels(concurrencies: List[Int]): Unit = {
+    for (i <- concurrencies.indices) {
+      val tdp = DataProvider("mnist", "train", batchSize, None, s"tdp$i")
+      val ts = Sentinel(tdp, concurrencies(i), softmaxLoss, Nil, s"ts$i").stage
+      ts ! Wire(Some(gates.last), Some(gates.head))
+      ts ! Start
+    }
+  }
+
+  val lr = 0.001
+  val net = makeNet(lr, List(28 * 28, 50, 20, 10), List(.5, .2, .1))
   val gates = Stageable.connect(net)
-  val batchSize = 256
+  val batchSize = 2048
 
-  val tdp1 = DataProvider("mnist", "train", batchSize, None, "tdp1")
-  val ts1 = Sentinel(tdp1, 1, softmaxLoss, Nil, "ts1").stage
-  ts1 ! Wire(Some(gates.last), Some(gates.head))
-  ts1 ! Start
+  makeSentinels(List(4))
 
-  val tdp2 = DataProvider("mnist", "train", batchSize, None, "tdp2")
-  val ts2 = Sentinel(tdp2, 1, softmaxLoss, Nil, "ts2").stage
-  ts2 ! Wire(Some(gates.last), Some(gates.head))
-  ts2 ! Start
-
-  val vdp = DataProvider("mnist", "dev", batchSize, None, "tdv")
+  val vdp = DataProvider("mnist", "dev", 1024, None, "vdp")
   val vs1 = Sentinel(vdp, 1, softmaxLoss, List(accuracy), "vs1").stage
   vs1 ! Wire(Some(gates.last), Some(gates.head))
 
-  while(true) {
+  while (true) {
     Thread.sleep(20000)
     vs1 ! Start
   }
-
 
 }

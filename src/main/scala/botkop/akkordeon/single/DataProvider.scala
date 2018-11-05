@@ -27,7 +27,8 @@ object DataProvider {
             miniBatchSize: Int,
             take: Option[Int] = None,
             name: String): DataProvider = {
-    val dl = DataLoader.instance(dataSet, mode, miniBatchSize, take)
+    //val dl = DataLoader.instance(dataSet, mode, miniBatchSize, take)
+    val dl = new MnistDataLoader(mode, miniBatchSize, take)
     val f = mode match {
       case "train" => b2t
       case "dev"   => b2v

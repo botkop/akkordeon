@@ -19,34 +19,29 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
 
   import sentinel._
 
-  var wire: Wire = _
-
   var loss = 0.0
   val scores: ArrayBuffer[Double] = ArrayBuffer.fill(scoreFunctions.length)(0.0)
   var numBatches = 0
 
   val dl: ActorRef = dataProvider.stage(context.system)
 
-  lazy val nextBatch = NextBatch(wire.next.get)
-
   override def receive: Receive = {
     case w: Wire =>
       log.debug(s"received wire $w")
-      wire = w
-      context become messageHandler
+      context become messageHandler(w.prev.get, w.next.get)
 
     case u =>
       log.error(s"receive: unknown message ${u.getClass.getName}")
   }
 
-  def messageHandler: Receive = {
+  def messageHandler(prev: ActorRef, next: ActorRef): Receive = {
     case Start =>
-      1 to concurrency foreach (_ => dl ! nextBatch)
+      1 to concurrency foreach (_ => dl ! NextBatch(next))
 
     case Forward(ar, yHat, y, id) =>
       val l = lossFunction(yHat, y)
       l.backward()
-      wire.prev.get ! Backward(ar, yHat.grad, id)
+      prev ! Backward(ar, yHat.grad, id)
       loss += l.data.squeeze()
       scoreFunctions.zipWithIndex.foreach {
         case (f, i) =>
@@ -56,7 +51,7 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
       numBatches += 1
 
     case _: Backward =>
-      dl ! nextBatch
+      dl ! NextBatch(next)
 
     case Validate(_, yHat, y) =>
       numBatches += 1
@@ -66,7 +61,7 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
           scores(i) += f(yHat, y)
       }
       if (numBatches < dataProvider.dl.numBatches)
-        dl ! nextBatch
+        dl ! NextBatch(next)
 
     case Epoch(epochName, epoch, duration) =>
       loss /= numBatches

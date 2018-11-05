@@ -17,6 +17,8 @@ class GateActor(gate: Gate) extends Actor with ActorLogging {
 
   var wire: Wire = _
 
+  var maxEntries = 0
+
   override def receive: Receive = {
     case w: Wire =>
       log.debug(s"received wire $w")
@@ -29,14 +31,22 @@ class GateActor(gate: Gate) extends Actor with ActorLogging {
   def messageHandler(activations: Map[String, (Variable, Variable)]): Receive = {
 
     case Validate(sentinel, x, y) =>
+      module.inTrainingMode = false
       wire.next.getOrElse(sentinel) ! Validate(sentinel, module(x), y)
 
     case Forward(sentinel, x, y, id) =>
+      module.inTrainingMode = true
       val result = module(x)
       wire.next.getOrElse(sentinel) ! Forward(sentinel, result, y, id)
       context become messageHandler(activations + (id -> (x, result)))
 
     case Backward(sentinel, g, id) =>
+      module.inTrainingMode = true
+      if (maxEntries < activations.size) {
+        maxEntries = activations.size
+        log.debug(s"$maxEntries")
+      }
+
       val (input, output) = activations(id)
       optimizer.zeroGrad()
       output.backward(g)
