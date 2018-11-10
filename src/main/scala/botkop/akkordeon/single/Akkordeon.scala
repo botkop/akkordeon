@@ -51,12 +51,12 @@ object Akkordeon extends App {
 
   makeSentinels(List(4))
 
-  val vdp = DataProvider("mnist", "dev", 1024, None, "vdp")
+  val vdp = DataProvider("mnist", "validate", 1024, None, "vdp")
   val vs1 = Sentinel(vdp, 1, softmaxLoss, List(accuracy), "vs1").stage
   vs1 ! Wire(Some(gates.last), Some(gates.head))
 
   while (true) {
-    Thread.sleep(20000)
+    Thread.sleep(10000)
     vs1 ! Start
   }
 

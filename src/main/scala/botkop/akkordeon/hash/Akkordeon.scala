@@ -18,7 +18,7 @@ object Akkordeon extends App {
 
   def makeSentinel(bs: Int, validate: Boolean, name: String): ActorRef = {
     val tdl: DataLoader = DataLoader.instance("mnist", "train", bs)
-    val vdl: DataLoader = DataLoader.instance("mnist", "dev", bs)
+    val vdl: DataLoader = DataLoader.instance("mnist", "validate", bs)
 
     val trainingComponents = SentinelComponents(tdl, 32, softmaxLoss)
     val validationComponents =

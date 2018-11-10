@@ -1,6 +1,7 @@
 package botkop.akkordeon.single
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
+import botkop.numsca.Tensor
 import scorch.autograd.Variable
 import scorch.nn.Module
 import scorch.optim.Optimizer
@@ -28,7 +29,10 @@ class GateActor(gate: Gate) extends Actor with ActorLogging {
       log.error(s"$name: receive: unknown message ${u.getClass.getName}")
   }
 
-  def messageHandler(activations: Map[String, (Variable, Variable)]): Receive = {
+  def moduleParameters: Seq[Tensor] = module.parameters.map(_.data.copy())
+
+  def messageHandler(
+      activations: Map[String, (Variable, Variable)]): Receive = {
 
     case Validate(sentinel, x, y) =>
       module.inTrainingMode = false
@@ -38,13 +42,16 @@ class GateActor(gate: Gate) extends Actor with ActorLogging {
       module.inTrainingMode = true
       val result = module(x)
       wire.next.getOrElse(sentinel) ! Forward(sentinel, result, y, id)
-      context become messageHandler(activations + (id -> (x, result)))
+
+      context become messageHandler(
+        activations + (id -> (x, result)))
 
     case Backward(sentinel, g, id) =>
       module.inTrainingMode = true
+
       if (maxEntries < activations.size) {
         maxEntries = activations.size
-        log.debug(s"$maxEntries")
+        log.info(s"$name: number of activations: $maxEntries")
       }
 
       val (input, output) = activations(id)

@@ -22,7 +22,7 @@ object Akkordeon extends App {
 
   val batchSize = 16
   val tdl: DataLoader = DataLoader.instance("mnist", "train", batchSize)
-  val vdl: DataLoader = DataLoader.instance("mnist", "dev", batchSize)
+  val vdl: DataLoader = DataLoader.instance("mnist", "validate", batchSize)
 
   val net: List[Gate] = makeNet(lr, imageSize, 50, 20, 10)
   val s = Sentinel(tdl, vdl, softmaxLoss, accuracy, "sentinel")
