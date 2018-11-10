@@ -25,12 +25,6 @@ case class DCASGD(parameters: Seq[Variable],
     if (useMomentum) Some(ns.zerosLike(v.data)) else None
   }
 
-//  val mc = 0.2345 // m is a constant taking value from [0, 1)
-//  val epsilon = 1e-7
-//  val meanSquare: Seq[Tensor] = parameters.map { v =>
-//    ns.zerosLike(v.data)
-//  }
-
   var t = 0
 
   override def step(): Unit = {
@@ -41,12 +35,6 @@ case class DCASGD(parameters: Seq[Variable],
       val grad = parameters(i).grad.data
       val previousWeight = previousWeights(i)
       val maybeMomentum = momenta(i)
-
-//      val ms = meanSquare(i)
-//      ms := mc * ms + (1 - mc) * grad * grad
-//      val l1 = lambda / ns.sqrt(ms + epsilon)
-//      val upd =
-//        -lr * (grad + (wd * weight) + l1 * grad * grad * (weight - previousWeight))
 
       val upd =
         -lr * (grad + (wd * weight) + lambda * grad * grad * (weight - previousWeight))

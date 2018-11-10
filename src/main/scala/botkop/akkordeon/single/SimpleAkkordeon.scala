@@ -5,7 +5,6 @@ import botkop.{numsca => ns}
 import scorch._
 import scorch.autograd.Variable
 import scorch.nn.{Linear, Module}
-import scorch.optim.SGD
 
 import scala.language.postfixOps
 
@@ -15,7 +14,8 @@ object SimpleAkkordeon extends App {
 
   botkop.numsca.rand.setSeed(232L)
 
-   val lr = 0.023
+  val lr = 0.01
+//  val lr = 0.023
 //   val lr = 0.003
 //  val lr = 0.0001
   val imageSize: Int = 28 * 28
@@ -60,7 +60,7 @@ object SimpleAkkordeon extends App {
             def forward(x: Variable): Variable = x ~> fc ~> relu
           }
 //          val o = DCASGD(m.parameters, lr, 1e-4, useMomentum = true)
-          val o = DCASGD(m.parameters, lr)
+          val o = DCASGDa(m.parameters, lr)
           Gate(m, o, s"g$i")
       } toList
 
