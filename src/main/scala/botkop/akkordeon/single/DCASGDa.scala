@@ -12,8 +12,8 @@ import scorch.optim.Optimizer
   */
 case class DCASGDa(parameters: Seq[Variable],
                    lr: Double,
-                   momentum: Double = 0.9,
-                   lambda: Double = 0.04)
+                   momentum: Double = 0.95,
+                   lambda: Double = 2)
     extends Optimizer(parameters) {
 
   val previousWeights: Seq[Tensor] = parameters.map { v =>
@@ -26,8 +26,8 @@ case class DCASGDa(parameters: Seq[Variable],
 
   override def step(): Unit =
     parameters.indices.foreach { i =>
-      val weight = parameters(i).data
       val grad = parameters(i).grad.data
+      val weight = parameters(i).data
       val previousWeight = previousWeights(i)
 
       meanSquare(i) *= momentum
