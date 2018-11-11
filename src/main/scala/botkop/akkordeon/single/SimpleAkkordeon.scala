@@ -5,6 +5,7 @@ import botkop.{numsca => ns}
 import scorch._
 import scorch.autograd.Variable
 import scorch.nn.{Linear, Module}
+import scorch.optim.DCASGDa
 
 import scala.language.postfixOps
 
@@ -25,6 +26,7 @@ object SimpleAkkordeon extends App {
   val net: List[Gate] = makeNet(lr, List(28 * 28, 50, 20, 10))
   val gates: List[ActorRef] = Stageable.connect(net)
 
+  /*
   val tdp = DataProvider("mnist", "train", batchSize, Some(30000), s"tdp")
   val ts: ActorRef = Sentinel(tdp, 2, softmaxLoss, Nil, s"ts").stage
   ts ! Wire(Some(gates.last), Some(gates.head))
@@ -34,9 +36,10 @@ object SimpleAkkordeon extends App {
   val ts1: ActorRef = Sentinel(tdp1, 2, softmaxLoss, Nil, s"ts1").stage
   ts1 ! Wire(Some(gates.last), Some(gates.head))
   ts1 ! Start
+  */
 
   val tdp2 = DataProvider("mnist", "train", batchSize, None, s"tdp2")
-  val ts2: ActorRef = Sentinel(tdp2, 2, softmaxLoss, List(accuracy), s"ts2").stage
+  val ts2: ActorRef = Sentinel(tdp2, 5, softmaxLoss, List(accuracy), s"ts2").stage
   ts2 ! Wire(Some(gates.last), Some(gates.head))
   ts2 ! Start
 
@@ -59,7 +62,6 @@ object SimpleAkkordeon extends App {
             val fc = Linear(l.head, l.last)
             def forward(x: Variable): Variable = x ~> fc ~> relu
           }
-//          val o = DCASGD(m.parameters, lr, 1e-4, useMomentum = true)
           val o = DCASGDa(m.parameters, lr)
           Gate(m, o, s"g$i")
       } toList

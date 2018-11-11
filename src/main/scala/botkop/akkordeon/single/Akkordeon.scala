@@ -26,7 +26,7 @@ object Akkordeon extends App {
             val drop = Dropout(drops(i))
             def forward(x: Variable): Variable = x ~> fc ~> drop ~> relu
           }
-          val o = Nesterov(m.parameters, lr)
+          val o = DCASGDa(m.parameters, lr)
         Gate(m, o, s"g$i")
     } toList
 
