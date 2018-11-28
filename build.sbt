@@ -12,3 +12,5 @@ libraryDependencies ++= Seq(
   "be.botkop" %% "scorch" % "0.1.1-SNAPSHOT",
   "org.scalatest" %% "scalatest" % "3.0.5" % "test"
 )
+
+fork := true
