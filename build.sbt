@@ -17,4 +17,5 @@ libraryDependencies ++= Seq(
 libraryDependencies += "com.intel.analytics.bigdl" % "bigdl-SPARK_2.3" % "0.7.1"
 libraryDependencies += "org.apache.spark" % "spark-mllib_2.11" % "2.3.1"
 
+scalacOptions in ThisBuild ++= Seq("-feature")
 fork := true

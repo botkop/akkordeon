@@ -15,6 +15,7 @@ object SimpleAkkordeon extends App {
 
   botkop.numsca.rand.setSeed(232L)
 
+
   val lr = 0.01
 //  val lr = 0.023
 //   val lr = 0.003
@@ -60,7 +61,10 @@ object SimpleAkkordeon extends App {
         case (l, i) =>
           val m: Module = new Module() {
             val fc = Linear(l.head, l.last)
-            def forward(x: Variable): Variable = x ~> fc ~> relu
+            def forward(x: Variable): Variable = {
+              def res(yHat: Variable): Variable = x + yHat
+              x ~> fc ~> relu ~> res
+            }
           }
           val o = DCASGDa(m.parameters, lr)
           Gate(m, o, s"g$i")
@@ -70,5 +74,4 @@ object SimpleAkkordeon extends App {
     val guessed = ns.argmax(yHat.data, axis = 1)
     ns.mean(y.data == guessed).squeeze()
   }
-
 }

@@ -34,6 +34,7 @@ object DataProvider {
     val f = dl.mode match {
       case "train"    => b2f
       case "validate" => b2v
+      case "dev"      => b2v
     }
     DataProvider(dl, f, name)
   }
