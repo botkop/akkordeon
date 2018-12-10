@@ -1,4 +1,4 @@
-package botkop.akkordeon.mkl
+package botkop.akkordeon.mklseq
 
 import java.nio.ByteBuffer
 import java.nio.file.{Files, Paths}

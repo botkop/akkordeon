@@ -1,4 +1,4 @@
-package botkop.akkordeon.mkl
+package botkop.akkordeon.mklseq
 
 import com.intel.analytics.bigdl.tensor.Tensor
 

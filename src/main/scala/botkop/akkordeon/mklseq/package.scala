@@ -6,7 +6,7 @@ import com.intel.analytics.bigdl.nn.abstractnn.Activity
 
 import scala.util.Random
 
-package object mkl {
+package object mklseq {
 
   case object Start
 

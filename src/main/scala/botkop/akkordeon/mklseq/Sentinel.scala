@@ -1,4 +1,4 @@
-package botkop.akkordeon.mkl
+package botkop.akkordeon.mklseq
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import com.intel.analytics.bigdl.nn.abstractnn.TensorCriterion

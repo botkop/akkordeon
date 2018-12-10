@@ -1,4 +1,4 @@
-package botkop.akkordeon.mkl
+package botkop.akkordeon.mklseq
 
 import akka.actor.ActorSystem
 import com.intel.analytics.bigdl.nn._
