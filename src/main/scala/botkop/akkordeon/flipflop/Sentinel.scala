@@ -1,7 +1,7 @@
 package botkop.akkordeon.flipflop
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
-import botkop.akkordeon.{DataIterator, Stageable, Wire}
+import botkop.akkordeon.DataIterator
 import scorch.autograd.Variable
 import scorch.data.loader.DataLoader
 

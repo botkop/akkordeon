@@ -2,26 +2,13 @@ package botkop.akkordeon.hash
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import scorch.autograd.Variable
-import scorch.data.loader.DataLoader
 
-import scala.util.Random
+import scala.collection.mutable.ArrayBuffer
 
-/*
-case class TrainingComponents(trainingDataLoader: DataLoader,
-                              trainingConcurrency: Int,
-                              loss: (Variable, Variable) => Variable)
-
-case class ValidationComponents(validationDataLoader: DataLoader,
-                                validationConcurrency: Int,
-                                evaluator: (Variable, Variable) => Double)
-*/
-
-case class SentinelComponents(dataLoader: DataLoader,
-                              concurrency: Int,
-                              f: (Variable, Variable) => Variable)
-
-case class Sentinel(trainer: SentinelComponents,
-                    validator: Option[SentinelComponents],
+case class Sentinel(dataProvider: DataProvider,
+                    concurrency: Int,
+                    lossFunction: (Variable, Variable) => Variable,
+                    scoreFunctions: List[(Variable, Variable) => Double],
                     name: String)
     extends Stageable {
   def stage(implicit system: ActorSystem): ActorRef =
@@ -32,89 +19,63 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
 
   import sentinel._
 
-  var wire: Wire = _
+  var loss = 0.0
+  val scores: ArrayBuffer[Double] = ArrayBuffer.fill(scoreFunctions.length)(0.0)
+  var numBatches = 0
 
-  var trainingLoss = 0.0
-  var numTrainingBatches = 0
-  var validationLoss = 0.0
-  var validationScore = 0.0
-  var numValidationBatches = 0
-
-  val dptn = s"$name-training"
-  val dpvn = s"$name-validation"
-
-  val tdl: ActorRef =
-    DataProvider(trainer.dataLoader, dptn).stage(context.system)
-  val vdl: Option[ActorRef] = validator.map { v =>
-    DataProvider(v.dataLoader, dpvn).stage(context.system)
-  }
-
-  private val b2t = (b: Batch) => {
-    val id = Random.nextString(4)
-    Forward(id, self, b.x, b.y)
-  }
-  lazy val nextTrainingBatch = NextBatch(wire.next.get, b2t)
-
-  private val b2v = (b: Batch) => Validate(self, b.x, b.y)
-  lazy val nextValidationBatch = NextBatch(wire.next.get, b2v)
+  val dl: ActorRef = dataProvider.stage(context.system)
 
   override def receive: Receive = {
     case w: Wire =>
       log.debug(s"received wire $w")
-      wire = w
-      context become messageHandler
+      context become messageHandler(w.prev.get, w.next.get)
 
     case u =>
       log.error(s"receive: unknown message ${u.getClass.getName}")
   }
 
-  def messageHandler: Receive = {
+  def messageHandler(prev: ActorRef, next: ActorRef): Receive = {
     case Start =>
-      1 to trainer.concurrency foreach (_ => tdl ! nextTrainingBatch)
-      if (validator.isDefined) {
-        1 to validator.get.concurrency foreach (_ =>
-          vdl.get ! nextValidationBatch)
+      1 to concurrency foreach (_ => dl ! NextBatch(next))
+
+    case Forward(ar, yHat, y, id) =>
+      val l = lossFunction(yHat, y)
+      l.backward()
+      prev ! Backward(ar, yHat.grad, id)
+      loss += l.data.squeeze()
+      scoreFunctions.zipWithIndex.foreach {
+        case (f, i) =>
+          scores(i) += f(yHat, y)
       }
 
-    case Forward(id, ar, yHat, y) =>
-      val l = trainer.f(yHat, y)
-      l.backward()
-      wire.prev.get ! Backward(id, ar, yHat.grad)
-      trainingLoss += l.data.squeeze()
-      numTrainingBatches += 1
+      numBatches += 1
 
     case _: Backward =>
-      tdl ! nextTrainingBatch
+      dl ! NextBatch(next)
 
-    case Validate(_, x, y) if validator.isDefined =>
-      numValidationBatches += 1
-      validationLoss += trainer.f(x, y).data.squeeze()
-      validationScore += validator.get.f(x, y).data.squeeze() // todo: heavy
-      if (numValidationBatches < validator.get.dataLoader.numBatches)
-        vdl.get ! nextValidationBatch
-
-    case Epoch(epochName, epoch, duration) if validator.isDefined =>
-      if (epochName == dptn) {
-        trainingLoss /= numTrainingBatches
-        validationLoss /= numValidationBatches
-        validationScore /= numValidationBatches
-        println(
-          f"epoch: $epoch%5d " +
-            f"trn_loss: $trainingLoss%9.6f " +
-            f"val_loss: $validationLoss%9.6f " +
-            f"val_score: $validationScore%9.6f " +
-            f"duration: ${duration}ms")
-        numTrainingBatches = 0
-        trainingLoss = 0
-        numValidationBatches = 0
-        validationLoss = 0
-        validationScore = 0
-        1 to validator.get.concurrency foreach (_ =>
-          vdl.get ! nextValidationBatch)
+    case Validate(_, yHat, y) =>
+      numBatches += 1
+      loss += lossFunction(yHat, y).data.squeeze()
+      scoreFunctions.zipWithIndex.foreach {
+        case (f, i) =>
+          scores(i) += f(yHat, y)
       }
+      if (numBatches < dataProvider.dl.numBatches)
+        dl ! NextBatch(next)
+
+    case Epoch(epochName, epoch, duration) =>
+      loss /= numBatches
+      scores.indices.foreach(i => scores(i) /= numBatches)
+      println(
+        f"$epochName%-10s epoch: $epoch%5d " +
+          f"loss: $loss%9.6f " +
+          f"duration: ${duration}ms " + scores)
+      loss = 0
+      numBatches = 0
+      scores.indices.foreach(i => scores(i) = 0)
 
     case u =>
-    // log.error(s"messageHandler: unknown message ${u.getClass.getName}")
+      log.error(s"messageHandler: unknown message ${u.getClass.getName}")
   }
 
 }

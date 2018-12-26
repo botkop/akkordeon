@@ -1,4 +1,4 @@
-package botkop.akkordeon.single
+package botkop.akkordeon.hash
 
 import akka.actor.{ActorRef, ActorSystem}
 import botkop.{numsca => ns}
@@ -15,31 +15,16 @@ object SimpleAkkordeon extends App {
 
   botkop.numsca.rand.setSeed(232L)
 
-  val lr = 0.01
-//  val lr = 0.023
-//   val lr = 0.003
-//  val lr = 0.0001
   val imageSize: Int = 28 * 28
-
   val batchSize = 1024
 
-  val net: List[Gate] = makeNet(lr, List(28 * 28, 50, 20, 10))
+  val net: List[Gate] =
+    makeNet(List(2e-2, 1e-2, 5e-3), List(28 * 28, 50, 20, 10))
   val gates: List[ActorRef] = Stageable.connect(net)
 
-  /*
-  val tdp = DataProvider("mnist", "train", batchSize, Some(30000), s"tdp")
-  val ts: ActorRef = Sentinel(tdp, 2, softmaxLoss, Nil, s"ts").stage
-  ts ! Wire(Some(gates.last), Some(gates.head))
-  ts ! Start
-
-  val tdp1 = DataProvider("mnist", "train", batchSize, Some(30000), s"tdp1")
-  val ts1: ActorRef = Sentinel(tdp1, 2, softmaxLoss, Nil, s"ts1").stage
-  ts1 ! Wire(Some(gates.last), Some(gates.head))
-  ts1 ! Start
-  */
-
   val tdp2 = DataProvider("mnist", "train", batchSize, None, s"tdp2")
-  val ts2: ActorRef = Sentinel(tdp2, 5, softmaxLoss, List(accuracy), s"ts2").stage
+  val ts2: ActorRef =
+    Sentinel(tdp2, 5, softmaxLoss, List(accuracy), s"ts2").stage
   ts2 ! Wire(Some(gates.last), Some(gates.head))
   ts2 ! Start
 
@@ -52,7 +37,7 @@ object SimpleAkkordeon extends App {
     vs ! Start
   }
 
-  def makeNet(lr: Double, sizes: List[Int]): List[Gate] =
+  def makeNet(lr: List[Double], sizes: List[Int]): List[Gate] =
     sizes
       .sliding(2, 1)
       .zipWithIndex
@@ -62,9 +47,9 @@ object SimpleAkkordeon extends App {
             val fc = Linear(l.head, l.last)
             def forward(x: Variable): Variable = x ~> fc ~> relu
           }
-          val o = DCASGDa(m.parameters, lr)
-          Gate(m, o, s"g$i")
-      } toList
+          val o = DCASGDa(m.parameters, lr(i))
+        Gate(m, o, s"g$i")
+    } toList
 
   def accuracy(yHat: Variable, y: Variable): Double = {
     val guessed = ns.argmax(yHat.data, axis = 1)

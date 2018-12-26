@@ -1,7 +1,6 @@
 package botkop.akkordeon.flipflop
 
 import akka.actor.ActorSystem
-import botkop.akkordeon.Stageable
 import botkop.{numsca => ns}
 import scorch._
 import scorch.autograd.Variable

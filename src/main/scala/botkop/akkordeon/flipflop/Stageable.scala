@@ -1,4 +1,4 @@
-package botkop.akkordeon
+package botkop.akkordeon.flipflop
 
 import akka.actor.{ActorRef, ActorSystem}
 

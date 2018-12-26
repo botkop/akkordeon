@@ -20,6 +20,14 @@ object Stageable {
     gates
   }
 
+  def connect(sentinels: List[ActorRef], gates: List[ActorRef]): Unit = {
+    connect(gates)
+    sentinels.foreach { s =>
+      s ! Wire(Some(gates.last), Some(gates.head))
+    }
+  }
+
   def connect(gates: List[Stageable])(
       implicit system: ActorSystem): List[ActorRef] = connect(stage(gates))
+
 }

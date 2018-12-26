@@ -1,9 +1,12 @@
 package botkop.akkordeon.hash
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
+import akka.dispatch.MessageDispatcher
 import scorch.autograd.Variable
 import scorch.nn.Module
 import scorch.optim.Optimizer
+
+import scala.concurrent.Future
 
 case class Gate(module: Module, optimizer: Optimizer, name: String)
     extends Stageable {
@@ -15,6 +18,10 @@ class GateActor(gate: Gate) extends Actor with ActorLogging {
 
   import gate._
 
+  implicit val dispatcher: MessageDispatcher =
+    context.system.dispatchers.lookup("bulk-head-dispatcher")
+
+  module.inTrainingMode = true
   var wire: Wire = _
 
   override def receive: Receive = {
@@ -29,19 +36,25 @@ class GateActor(gate: Gate) extends Actor with ActorLogging {
   def messageHandler(activations: Map[String, (Variable, Variable)]): Receive = {
 
     case Validate(sentinel, x, y) =>
-      wire.next.getOrElse(sentinel) ! Validate(sentinel, module(x), y)
+      Future {
+        module.inTrainingMode = false
+        wire.next.getOrElse(sentinel) ! Validate(sentinel, module(x), y)
+        module.inTrainingMode = true
+      }
 
-    case Forward(id, sentinel, x, y) =>
+    case Forward(sentinel, x, y, id) =>
       val result = module(x)
-      wire.next.getOrElse(sentinel) ! Forward(id, sentinel, result, y)
+      wire.next.getOrElse(sentinel) ! Forward(sentinel, result, y, id)
       context become messageHandler(activations + (id -> (x, result)))
 
-    case Backward(id, sentinel, g) =>
+    case Backward(sentinel, g, id) =>
       val (input, output) = activations(id)
-      optimizer.zeroGrad()
-      output.backward(g)
-      wire.prev.getOrElse(sentinel) ! Backward(id, sentinel, input.grad)
-      optimizer.step()
+      Future {
+        optimizer.zeroGrad()
+        output.backward(g)
+        wire.prev.getOrElse(sentinel) ! Backward(sentinel, input.grad, id)
+        optimizer.step()
+      }
       context become messageHandler(activations - id)
 
     case u =>
