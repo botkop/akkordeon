@@ -19,7 +19,7 @@ object SimpleAkkordeon extends App {
   val batchSize = 1024
 
   val net: List[Gate] =
-    makeNet(List(2e-2, 1e-2, 5e-3), List(28 * 28, 50, 20, 10))
+    makeNet(List(2e-2, 1e-2, 5e-3), List(imageSize, 50, 20, 10))
   val gates: List[ActorRef] = Stageable.connect(net)
 
   val tdp2 = DataProvider("mnist", "train", batchSize, None, s"tdp2")
