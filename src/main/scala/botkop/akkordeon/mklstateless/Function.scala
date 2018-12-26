@@ -1,7 +1,7 @@
 package botkop.akkordeon.mklstateless
 
-import com.intel.analytics.bigdl.nn.abstractnn.AbstractModule
 import com.intel.analytics.bigdl._
+import com.intel.analytics.bigdl.nn.abstractnn.AbstractModule
 import com.intel.analytics.bigdl.tensor.Tensor
 
 trait Function {
@@ -27,7 +27,10 @@ abstract class FunctionFactory(v: Variable) extends Function {
   }
 }
 
+
 case class Transpose(v: Variable) extends FunctionFactory(v) {
   val m = new nn.Transpose[Float](Array((1, 2)))
 }
+
+case class Linear(inFeatures: Int, outFeatures: Int)
 

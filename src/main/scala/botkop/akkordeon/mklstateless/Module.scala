@@ -1,5 +1,7 @@
 package botkop.akkordeon.mklstateless
 
+import com.intel.analytics.bigdl.nn.abstractnn.TensorModule
+import com.intel.analytics.bigdl.nn.{Linear => MklLinear}
 import com.intel.analytics.bigdl.tensor.Tensor
 
 abstract class Module {
@@ -25,7 +27,25 @@ abstract class Module {
   def apply(x: Variable): Variable = forward(x)
 }
 
-case class Linear(weights: Variable, bias: Variable) extends Module {
-  override def forward(x: Variable): Variable =
-    x.dot(weights.t()) + bias
+case class Linear(inputSize: Int, outputSize: Int) extends Module {
+  val m = new MklLinear[Float](inputSize, outputSize)
+
+  override def forward(x: Variable): Variable = ModuleFunction(x, m).forward()
 }
+
+case class ModuleFunction(x: Variable, m: TensorModule[Float]) extends Function {
+  lazy val result: Tensor[Float] = {
+    m.clearState()
+    m.forward(x.data).clone()
+  }
+
+  override def forward(): Variable = Variable(result, Some(this))
+
+  override def backward(g: Tensor[Float]): Unit = {
+    m.clearState()
+    m.output.set(result)
+    val gi = m.updateGradInput(x.data, g).clone()
+    x.backward(gi)
+  }
+}
+
