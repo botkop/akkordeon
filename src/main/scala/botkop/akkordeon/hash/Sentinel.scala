@@ -66,7 +66,7 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
     case Epoch(epochName, epoch, duration) =>
       loss /= numBatches
       scores.indices.foreach(i => scores(i) /= numBatches)
-      println(
+      log.info(
         f"$epochName%-10s epoch: $epoch%5d " +
           f"loss: $loss%9.6f " +
           f"duration: ${duration / 1e6}ms " +

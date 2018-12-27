@@ -20,7 +20,7 @@ object SimpleAkkordeon extends App {
 
   val sizes = List(imageSize, 50, 20, 10)
   val learningRates = List(2e-2, 1e-2, 5e-3)
-  val dropOuts = List(0.1, 0.1, 0.0001)
+  val dropOuts = List(0.15, 0.07, 0.03)
   val gates = makeNet(sizes, learningRates, dropOuts)
   val net = Stageable.connect(gates)
 

@@ -17,14 +17,14 @@ Every layer has its own optimizer.
 Thus, optimization itself runs asynchronously from other layers. 
 To alleviate the 'delayed gradient' problem, we use an implementation of the '[Asynchronous Stochastic Gradient Descent with Delay Compensation'](https://arxiv.org/abs/1609.08326) optimizer.
 
-The actor model allows us to run the training and validation phases concurrently.
+The actor model allows us to run the training and validation phases concurrently, and so data providers are implemented as actors.
 
 ## Prepare
 
-After having cloned/downloaded the source code of this project, download the MNIST dataset by executing the script `scripts/download_mnist.sh`
-or manually downloading the files from the URLs in the script, and putting them in a folder `data/mnist`.
+After having cloned/downloaded the source code of this project, get the MNIST dataset by executing the script `scripts/download_mnist.sh`
+or by manually downloading the files from the URLs in the script, and putting them in a folder `data/mnist`.
 
-You will also need [sbt](https://www.scala-sbt.org/download.html) to build the project.
+You will need [sbt](https://www.scala-sbt.org/download.html) to build the project.
 
 ## Build and run
 
