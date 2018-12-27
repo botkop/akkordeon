@@ -69,7 +69,9 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
       println(
         f"$epochName%-10s epoch: $epoch%5d " +
           f"loss: $loss%9.6f " +
-          f"duration: ${duration / 1e6}ms " + scores)
+          f"duration: ${duration / 1e6}ms " +
+          s"""scores: (${scores.mkString(", ")})""")
+
       loss = 0
       numBatches = 0
       scores.indices.foreach(i => scores(i) = 0)
