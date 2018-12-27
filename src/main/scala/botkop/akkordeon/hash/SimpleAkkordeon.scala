@@ -1,10 +1,10 @@
 package botkop.akkordeon.hash
 
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.ActorSystem
 import botkop.{numsca => ns}
 import scorch._
 import scorch.autograd.Variable
-import scorch.nn.{Linear, Module}
+import scorch.nn.{Dropout, Linear, Module}
 import scorch.optim.DCASGDa
 
 import scala.language.postfixOps
@@ -18,26 +18,28 @@ object SimpleAkkordeon extends App {
   val imageSize: Int = 28 * 28
   val batchSize = 1024
 
-  val net: List[Gate] =
-    makeNet(List(2e-2, 1e-2, 5e-3), List(imageSize, 50, 20, 10))
-  val gates: List[ActorRef] = Stageable.connect(net)
+  val sizes = List(imageSize, 50, 20, 10)
+  val learningRates = List(2e-2, 1e-2, 5e-3)
+  val dropOuts = List(0.2, 0.1, 0.0001)
+  val gates = makeNet(sizes, learningRates, dropOuts)
+  val net = Stageable.connect(gates)
 
-  val tdp2 = DataProvider("mnist", "train", batchSize, None, s"tdp2")
-  val ts2: ActorRef =
-    Sentinel(tdp2, 5, softmaxLoss, List(accuracy), s"ts2").stage
-  ts2 ! Wire(Some(gates.last), Some(gates.head))
-  ts2 ! Start
+  val tdp = DataProvider("mnist", "train", batchSize, None, "tdp")
+  val ts = Sentinel(tdp, 5, softmaxLoss, List(accuracy), "ts").stage
+  ts ! Wire(Some(net.last), Some(net.head))
+  ts ! Start
 
   val vdp = DataProvider("mnist", "validate", 1024, None, "vdp")
-  val vs: ActorRef = Sentinel(vdp, 1, softmaxLoss, List(accuracy), "vs").stage
-  vs ! Wire(Some(gates.last), Some(gates.head))
-
+  val vs = Sentinel(vdp, 1, softmaxLoss, List(accuracy), "vs").stage
+  vs ! Wire(Some(net.last), Some(net.head))
   while (true) {
     Thread.sleep(20000)
     vs ! Start
   }
 
-  def makeNet(lr: List[Double], sizes: List[Int]): List[Gate] =
+  def makeNet(sizes: List[Int],
+              learningRates: List[Double],
+              dropOuts: List[Double]): List[Gate] =
     sizes
       .sliding(2, 1)
       .zipWithIndex
@@ -45,9 +47,10 @@ object SimpleAkkordeon extends App {
         case (l, i) =>
           val m: Module = new Module() {
             val fc = Linear(l.head, l.last)
-            def forward(x: Variable): Variable = x ~> fc ~> relu
+            val drop = Dropout(dropOuts(i))
+            def forward(x: Variable): Variable = x ~> fc ~> relu ~> drop
           }
-          val o = DCASGDa(m.parameters, lr(i))
+          val o = DCASGDa(m.parameters, learningRates(i))
         Gate(m, o, s"g$i")
     } toList
 
