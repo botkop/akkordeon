@@ -11,6 +11,11 @@ The results of the forward and backward pass are passed as messages from one lay
 Calculations inside a layer are performed asynchronously from other layers.
 Thus, a layer does not have to wait for the backward pass in order to perform the forward pass of the next batch.
 
+Every layer has its own optimizer.
+Thus, the optimization itself runs asynchronously from other layers. 
+To alleviate the 'delayed gradient' problem, we use an implementation of the 'Asynchronous Stochastic Gradient Descent with Delay Compensation' optimizer.
+
+Since 
 
 
 
