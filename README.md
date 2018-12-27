@@ -2,7 +2,9 @@
 
 # Akkordeon: Training a neural net with Akka
 
-The world is asynchronous. So how come AI research is so focused on optimizing single threaded processes? Because they use the wrong tools.
+The world is asynchronous. 
+So how come AI researchers are so obsessed with optimizing single threaded processes? 
+Because that's what their toolbox allows them to do.
 
 This project shows how to train a neural net with Akka.
 
@@ -14,18 +16,13 @@ Calculations inside a layer are performed asynchronously from other layers.
 Thus, a layer does not have to wait for the backward pass in order to perform the forward pass of the next batch.
 
 Every layer has its own optimizer.
-Thus, the optimization itself runs asynchronously from other layers. 
+Thus, optimization itself runs asynchronously from other layers. 
 To alleviate the 'delayed gradient' problem, we use an implementation of the 'Asynchronous Stochastic Gradient Descent with Delay Compensation' optimizer.
 
-Since 
+The actor model allows us to run the training and validation phases concurrently.
 
 
 
 
 
-
-
-
-
-[Actor model of a neural network](https://towardsdatascience.com/akkordeon-actor-model-of-a-neural-network-ff748096a5a3)
 
