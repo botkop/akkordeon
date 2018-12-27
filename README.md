@@ -2,6 +2,8 @@
 
 # Akkordeon: Training a neural net with Akka
 
+The world is asynchronous. So how come AI research is so focused on optimizing single threaded processes? Because they use the wrong tools.
+
 This project shows how to train a neural net with Akka.
 
 The mechanics are as follows:
