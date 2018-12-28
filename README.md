@@ -49,10 +49,13 @@ This will produce output similar to this:
 ```
 ## Components
 
+![components](doc/training.png "Logo Title Text 1")
+
+
 ### Gate
 A gate is similar to a layer. 
-Every gate is an actor. Whereas in a traditional network, there is only one optimizer for the complete network, every gate has its own optimizer. 
-There is however, no difference in functionality, since optimizers do not share data between layers. 
+Every gate is an actor. Whereas in a traditional network there is only one optimizer for the complete network, every gate has its own optimizer. 
+There is however no difference in functionality, since optimizers do not share data between layers. 
 
 A gate can consist of an arbitrarily complex network in itself. 
 You can put multiple convolutional, pooling, batchnorm, dropout, ... and so on in one gate. 
