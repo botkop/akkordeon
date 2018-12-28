@@ -33,7 +33,7 @@ class GateActor(gate: Gate) extends Actor with ActorLogging {
       log.error(s"$name: receive: unknown message ${u.getClass.getName}")
   }
 
-  def messageHandler(activations: Map[String, (Variable, Variable)]): Receive = {
+  def messageHandler(activations: Map[Int, (Variable, Variable)]): Receive = {
 
     case Validate(sentinel, x, y) =>
       Future {
@@ -49,12 +49,12 @@ class GateActor(gate: Gate) extends Actor with ActorLogging {
 
     case Backward(sentinel, g, id) =>
       val (input, output) = activations(id)
-      // Future {
+      Future {
         optimizer.zeroGrad()
         output.backward(g)
         wire.prev.getOrElse(sentinel) ! Backward(sentinel, input.grad, id)
         optimizer.step()
-      // }
+      }
       context become messageHandler(activations - id)
 
     case u =>

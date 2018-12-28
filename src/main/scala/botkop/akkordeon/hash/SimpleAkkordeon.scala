@@ -47,7 +47,8 @@ object SimpleAkkordeon extends App {
         case (l, i) =>
           val m: Module = new Module() {
             val fc = Linear(l.head, l.last)
-            val drop = Dropout(dropOuts(i))
+            // val drop = Dropout(dropOuts(i))
+            val drop = DropConnect(dropOuts(i))
             def forward(x: Variable): Variable = x ~> fc ~> relu ~> drop
           }
           val o = DCASGDa(m.parameters, learningRates(i))

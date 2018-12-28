@@ -14,10 +14,13 @@ Calculations inside a layer are performed asynchronously from other layers.
 Thus, a layer does not have to wait for the backward pass in order to perform the forward pass of the next batch.
 
 Every layer has its own optimizer.
-Thus, optimization itself runs asynchronously from other layers. 
+Optimization on a layer runs asynchronously from other layers. 
 To alleviate the 'delayed gradient' problem, we use an implementation of the '[Asynchronous Stochastic Gradient Descent with Delay Compensation'](https://arxiv.org/abs/1609.08326) optimizer.
 
-The actor model allows us to run the training and validation phases concurrently, and so data providers are implemented as actors.
+Data providers are implemented as actors. You can have mutiple data providers running at the same time, each with a subset of the training data for example.
+This allows us to run the training and validation phases concurrently.
+
+All actors can be deployed on a single machine or in a cluster of machines, thus leveraging both horizontal and vertical computing power.
 
 ## Prepare
 
@@ -44,6 +47,23 @@ This will produce output similar to this:
 [info] tdp        epoch:     7 loss:  0.892328 duration: 2856.552759ms scores: (0.7027704402551813)
 [info] vdp        epoch:     1 loss:  0.866831 duration: 1768.835725ms scores: (0.7107204861111112)
 ```
+## Components
+
+### Gate
+A gate is similar to a layer. 
+Every gate is an actor. Whereas in a traditional network, there is only one optimizer for the complete network, every gate has its own optimizer. 
+There is however, no difference in functionality, since optimizers do not share data between layers. 
+
+A gate can consist of an arbitrarily complex network in itself. 
+You can put multiple convolutional, pooling, batchnorm, dropout, ... and so on in one gate. 
+Or you can assign them to different gates, thus distributing the work over multiple actors.
+
+### Sentinel
+The sentinel does a couple of things:
+- provide data for training and validation
+- calculate and report loss and accuracy during training and validation
+- trigger the forward pass for training and validation
+- trigger the backward pass when training
 
 
 

@@ -10,8 +10,8 @@ package object hash {
   case object Start
 
   trait Message
-  case class Forward(sentinel: ActorRef, x: Variable, y: Variable, id: String = Random.nextString(4)) extends Message
-  case class Backward(sentinel: ActorRef, g: Variable, id: String) extends Message
+  case class Forward(sentinel: ActorRef, x: Variable, y: Variable, id: Int = Random.nextInt()) extends Message
+  case class Backward(sentinel: ActorRef, g: Variable, id: Int) extends Message
   case class Validate(sentinel: ActorRef, x: Variable, y: Variable) extends Message
 
   case class Batch(x: Variable, y: Variable)
