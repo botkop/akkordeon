@@ -79,3 +79,8 @@ This will produce output similar to this:
 [info] vdp        epoch:     1 loss:  0.866831 duration: 1768.835725ms scores: (0.7107204861111112)
 ```
 
+# References
+
+- [Asynchronous Stochastic Gradient Descent with Delay Compensation](https://arxiv.org/abs/1609.08326)
+- [An analysis of the Delayed Gradients Problem in asynchronous SGD](https://pdfs.semanticscholar.org/716b/a3d174006c19220c985acf132ffdfc6fc37b.pdf)
+
