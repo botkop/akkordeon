@@ -8,19 +8,50 @@ This project shows how to train a neural net with Akka.
 
 The mechanics are as follows:
 
-Every layer is an actor. 
-The results of the forward and backward pass are passed as messages from one layer to the next.
+A layer is embedded in a [gate](#gate), and implemented as an actor. 
+The results of the forward and backward pass are passed as messages from one gate (layer) to the next.
 Calculations inside a layer are performed asynchronously from other layers.
 Thus, a layer does not have to wait for the backward pass in order to perform the forward pass of the next batch.
 
-Every layer has its own optimizer.
-Optimization on a layer runs asynchronously from other layers. 
-To alleviate the 'delayed gradient' problem, we use an implementation of the '[Asynchronous Stochastic Gradient Descent with Delay Compensation'](https://arxiv.org/abs/1609.08326) optimizer.
+Every gate has its own optimizer.
+Optimization on a layer thus runs asynchronously from other layers. 
+To alleviate the 'delayed gradient' problem, we use an implementation of the ['Asynchronous Stochastic Gradient Descent with Delay Compensation'](https://arxiv.org/abs/1609.08326) optimizer.
 
-Data providers are implemented as actors. You can have mutiple data providers running at the same time, each with a subset of the training data for example.
-This allows us to run the training and validation phases concurrently.
+Data providers are embedded in [sentinels](#sentinel) and implemented as actors. You can have mutiple sentinels running at the same time, each with a subset of the training data for example.
+This also allows us to run the training and validation phases concurrently.
 
 All actors can be deployed on a single machine or in a cluster of machines, thus leveraging both horizontal and vertical computing power.
+
+## Components
+
+![components](doc/training.png "Logo Title Text 1")
+
+
+### Gate
+A gate is similar to a layer. 
+Every gate is an actor. 
+Whereas in a traditional network there is only one optimizer for the complete network, here every gate has its own optimizer. 
+There is however no difference in functionality, since optimizers do not share data between layers. 
+
+A gate can consist of an arbitrarily complex network in itself. 
+You can put multiple convolutional, pooling, batchnorm, dropouts, ... and so on in one gate. 
+Or you can assign them to different gates, thus distributing the work over multiple actors.
+
+### Network
+A network is a sequence of gates.
+The sequence is open. 
+You can attach multiple sentinels, each with its own data provider, to the network.
+
+### Sentinel
+The sentinel is an actor, and does a couple of things:
+- provide data, through the data provider, for training, validation and test
+- calculate and report loss and accuracy during training and validation
+- trigger the forward pass for each batch during training, validation and test
+- trigger the backward pass for each batch when training
+
+You can attach multiple sentinels to a network. 
+Typically, one or more sentinels are provided for training, and one for validation. 
+The latter runs every 20 seconds for example, whereas the training sentinels run continuously.
 
 ## Prepare
 
@@ -47,27 +78,4 @@ This will produce output similar to this:
 [info] tdp        epoch:     7 loss:  0.892328 duration: 2856.552759ms scores: (0.7027704402551813)
 [info] vdp        epoch:     1 loss:  0.866831 duration: 1768.835725ms scores: (0.7107204861111112)
 ```
-## Components
-
-![components](doc/training.png "Logo Title Text 1")
-
-
-### Gate
-A gate is similar to a layer. 
-Every gate is an actor. Whereas in a traditional network there is only one optimizer for the complete network, every gate has its own optimizer. 
-There is however no difference in functionality, since optimizers do not share data between layers. 
-
-A gate can consist of an arbitrarily complex network in itself. 
-You can put multiple convolutional, pooling, batchnorm, dropout, ... and so on in one gate. 
-Or you can assign them to different gates, thus distributing the work over multiple actors.
-
-### Sentinel
-The sentinel does a couple of things:
-- provide data for training and validation
-- calculate and report loss and accuracy during training and validation
-- trigger the forward pass for training and validation
-- trigger the backward pass when training
-
-
-
 

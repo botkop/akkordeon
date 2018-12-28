@@ -47,7 +47,6 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
         case (f, i) =>
           scores(i) += f(yHat, y)
       }
-
       numBatches += 1
 
     case _: Backward =>
