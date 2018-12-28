@@ -49,12 +49,12 @@ class GateActor(gate: Gate) extends Actor with ActorLogging {
 
     case Backward(sentinel, g, id) =>
       val (input, output) = activations(id)
-      Future {
+      // Future {
         optimizer.zeroGrad()
         output.backward(g)
         wire.prev.getOrElse(sentinel) ! Backward(sentinel, input.grad, id)
         optimizer.step()
-      }
+      // }
       context become messageHandler(activations - id)
 
     case u =>
