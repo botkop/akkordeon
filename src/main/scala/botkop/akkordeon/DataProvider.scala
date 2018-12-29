@@ -1,7 +1,6 @@
-package botkop.akkordeon.hash
+package botkop.akkordeon
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
-import botkop.akkordeon.DataIterator
 import scorch.autograd.Variable
 import scorch.data.loader.DataLoader
 

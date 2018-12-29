@@ -1,4 +1,4 @@
-package botkop.akkordeon.hash
+package botkop.akkordeon
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import scorch.autograd.Variable

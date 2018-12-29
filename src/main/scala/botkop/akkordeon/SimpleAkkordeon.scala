@@ -1,4 +1,4 @@
-package botkop.akkordeon.hash
+package botkop.akkordeon
 
 import akka.actor.ActorSystem
 import botkop.{numsca => ns}

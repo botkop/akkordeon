@@ -1,4 +1,4 @@
-package botkop.akkordeon.hash
+package botkop.akkordeon
 
 import botkop.numsca.Tensor
 import botkop.{numsca => ns}
