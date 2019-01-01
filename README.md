@@ -63,7 +63,7 @@ You will need [sbt](https://www.scala-sbt.org/download.html) to build the projec
 ## Build and run
 
 ```
-sbt 'runMain botkop.akkordeon.hash.SimpleAkkordeon'
+sbt 'runMain botkop.akkordeon.SimpleAkkordeon'
 ```
 
 This will produce output similar to this:

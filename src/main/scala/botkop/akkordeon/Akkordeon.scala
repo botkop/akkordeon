@@ -31,12 +31,7 @@ object Akkordeon extends App {
         Gate(m, o, s"g$i")
     } toList
 
-  def accuracy(yHat: Variable, y: Variable): Double = {
-    val guessed = ns.argmax(yHat.data, axis = 1)
-    ns.mean(y.data == guessed).squeeze()
-  }
-
-  def makeSentinels(takes: List[Option[Int]], concurrencies: List[Int]): Unit = {
+  def makeTrainingSentinels(takes: List[Option[Int]], concurrencies: List[Int]): Unit = {
     for (i <- concurrencies.indices) {
       val tdp = DataProvider("mnist", "train", batchSize, takes(i), s"tdp$i")
       val ts = Sentinel(tdp, concurrencies(i), softmaxLoss, List(accuracy), s"ts$i").stage
@@ -66,7 +61,7 @@ object Akkordeon extends App {
   val net = makeNet(sizes, learningRates, dropOuts)
   val gates = Stageable.connect(net)
 
-  makeSentinels(List(None, Some(30000), Some(30000)), List(1, 1, 1))
+  makeTrainingSentinels(List(None, Some(30000), Some(30000)), List(1, 1, 1))
 
   val vdp = DataProvider("mnist", "validate", 1024, None, "___VDP___")
   val vs = Sentinel(vdp, 1, softmaxLoss, List(accuracy), "vs").stage

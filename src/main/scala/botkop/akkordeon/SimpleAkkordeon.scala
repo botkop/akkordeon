@@ -26,12 +26,12 @@ object SimpleAkkordeon extends App {
 
   val tdp = DataProvider("mnist", "train", batchSize, None, "tdp")
   val ts = Sentinel(tdp, 5, softmaxLoss, List(accuracy), "ts").stage
-  ts ! Wire(Some(net.last), Some(net.head))
+  ts ! Wire(net)
   ts ! Start
 
   val vdp = DataProvider("mnist", "validate", 1024, None, "vdp")
   val vs = Sentinel(vdp, 1, softmaxLoss, List(accuracy), "vs").stage
-  vs ! Wire(Some(net.last), Some(net.head))
+  vs ! Wire(net)
   while (true) {
     Thread.sleep(20000)
     vs ! Start
@@ -54,10 +54,5 @@ object SimpleAkkordeon extends App {
           val o = DCASGDa(m.parameters, learningRates(i))
         Gate(m, o, s"g$i")
     } toList
-
-  def accuracy(yHat: Variable, y: Variable): Double = {
-    val guessed = ns.argmax(yHat.data, axis = 1)
-    ns.mean(y.data == guessed).squeeze()
-  }
 
 }
