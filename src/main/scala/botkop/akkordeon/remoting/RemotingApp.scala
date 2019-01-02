@@ -13,59 +13,64 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.language.postfixOps
 
+object RemotingSettings {
+  // some settings
+  val clusterName = "AkkordeonCluster"
+  val numTrainingSamples = 60000
+  val numValidationSamples = 10000
+  val nameOfFirstGate = "g0"
+  val nameOfLastGate = "g2"
+}
+
 object RemotingApp extends App {
-  NetworkApp.main(Array("25520"))
+  NetworkApp.main(Array("127.0.0.1:25520"))
 
   SentinelApp.main(
-    Array("25521",
-          "trainingSentinel1",
+    Array("trainingSentinel1",
           "train",
           "60000",
-          "akka://AkkordeonCluster@127.0.0.1:25520/user/g0",
-          "akka://AkkordeonCluster@127.0.0.1:25520/user/g2"
-    ))
+          "127.0.0.1:25520"))
 
   SentinelApp.main(
-    Array("25522",
-      "trainingSentinel2",
-      "train",
-      "30000",
-      "akka://AkkordeonCluster@127.0.0.1:25520/user/g0",
-      "akka://AkkordeonCluster@127.0.0.1:25520/user/g2"
-    ))
+    Array("trainingSentinel2",
+          "train",
+          "3000",
+          "127.0.0.1:25520"))
 
 }
 
 object SentinelApp extends App {
-  val port = args(0)
-  val name = args(1)
-  val mode = args(2)
-  val take = Some(args(3).toInt)
-  val headAddress = args(4)
-  val lastAddress = args(5)
+  val name = args(0)
+  val mode = args(1)
+  val take = Some(args(2).toInt)
+  val nnAddress = args(3)
 
   val batchSize = 256
   val concurrency = 1
 
   val config = ConfigFactory
     .parseString(s"""
-        akka.remote.artery.canonical.port=$port
-        """)
+                    |akka.remote.artery.canonical.hostname = 127.0.0.1
+                    |akka.remote.artery.canonical.port = 0
+                    |""".stripMargin)
     .withFallback(ConfigFactory.load("remoting"))
-  implicit val system: ActorSystem = ActorSystem("AkkordeonCluster", config)
 
-  val tdp = DataProvider("mnist", mode, batchSize, take, s"dp$name")
+  implicit val system: ActorSystem = ActorSystem(RemotingSettings.clusterName, config)
+
+  val tdp = DataProvider("mnist", mode, batchSize, take, s"dp4$name")
   val sentinel =
     Sentinel(tdp, concurrency, softmaxLoss, List(accuracy), name).stage
 
   implicit val execContext: ExecutionContextExecutor = system.dispatcher
   implicit val timeout: Timeout = Timeout(3 seconds)
 
+  def path(gate: String) = s"akka://${RemotingSettings.clusterName}@$nnAddress/user/$gate"
+
   Future
     .sequence(
       List(
-        system.actorSelection(headAddress).resolveOne(),
-        system.actorSelection(lastAddress).resolveOne()
+        system.actorSelection(path(RemotingSettings.nameOfFirstGate)).resolveOne(),
+        system.actorSelection(path(RemotingSettings.nameOfLastGate)).resolveOne()
       ))
     .foreach {
       case List(head, last) =>
@@ -75,11 +80,14 @@ object SentinelApp extends App {
 }
 
 object NetworkApp extends App {
-  val port = args(0)
+  val addr = args(0)
+  val Array(host, port) = addr.split(":")
+  // val port = args(1)
   val config = ConfigFactory
     .parseString(s"""
-        akka.remote.artery.canonical.port=$port
-        """)
+         |akka.remote.artery.canonical.hostname = $host
+         |akka.remote.artery.canonical.port = $port
+         |""".stripMargin)
     .withFallback(ConfigFactory.load("remoting"))
   implicit val system: ActorSystem = ActorSystem("AkkordeonCluster", config)
 

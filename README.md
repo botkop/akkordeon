@@ -81,17 +81,23 @@ This will produce output similar to this:
 ```
 
 ### Multiple JVMs
+Obtain the IP address of the machine on which you want to run the network. 
+If you run all JVMs on the same machine, then you can use 127.0.0.1.
+Append the port number separated by colon:
+```
+export NNADDR=192.168.1.23:25520
+```
 Start the network in a terminal window:
 ```
-sbt 'runMain botkop.akkordeon.remoting.NetworkApp 25520'
+sbt "runMain botkop.akkordeon.remoting.NetworkApp $NNADDR"
 ```
 Start a sentinel in another terminal:
 ```
-sbt 'runMain botkop.akkordeon.remoting.SentinelApp 25521 trainingSentinel1 train 60000 akka://AkkordeonCluster@127.0.0.1:25520/user/g0 akka://AkkordeonCluster@127.0.0.1:25520/user/g2'
+sbt "runMain botkop.akkordeon.remoting.SentinelApp trainingSentinel1 train 60000 $NNADDR"
 ```
 And another one:
 ```
-sbt 'runMain botkop.akkordeon.remoting.SentinelApp 25522 trainingSentinel2 train 3000 akka://AkkordeonCluster@127.0.0.1:25520/user/g0 akka://AkkordeonCluster@127.0.0.1:25520/user/g2'
+sbt "runMain botkop.akkordeon.remoting.SentinelApp trainingSentinel2 train 3000 $NNADDR"
 ```
 
 # References
