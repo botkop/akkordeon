@@ -93,17 +93,22 @@ sbt "runMain botkop.akkordeon.remoting.NetworkApp $NNADDR"
 ```
 Obtain the IP address of a machine on which you want to run a sentinel.
 If you run all JVMs on the same machine, then you can use `127.0.0.1`.
-Append a free port number separated by colon.
-Start the sentinel in another terminal:
+Start a training sentinel in another terminal:
 ```
-SN1ADDR=192.168.0.158:25521
-sbt "runMain botkop.akkordeon.remoting.SentinelApp $SN1ADDR trainingSentinel1 train 60000 $NNADDR"
+MY_IP=192.168.0.158
+sbt "runMain botkop.akkordeon.remoting.SentinelApp $MY_IP train 60000 $NNADDR"
 ```
 And another one:
 ```
-SN2ADDR=192.168.0.159:25521
-sbt "runMain botkop.akkordeon.remoting.SentinelApp $SN2ADDR trainingSentinel2 train 3000 $NNADDR"
+MY_IP=192.168.0.159
+sbt "runMain botkop.akkordeon.remoting.SentinelApp $MY_IP train 3000 $NNADDR"
 ```
+Also start a validation sentinel. 
+```
+MY_IP=192.168.0.160
+sbt "runMain botkop.akkordeon.remoting.SentinelApp $MY_IP validate 10000 $NNADDR"
+```
+
 
 # References
 

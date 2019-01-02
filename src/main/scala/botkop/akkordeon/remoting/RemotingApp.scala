@@ -63,12 +63,9 @@ object RemotingUtil {
 
 object RemotingApp extends App {
   NetworkApp.main(Array("127.0.0.1:25520"))
-
-  SentinelApp.main(
-    Array("127.0.0.1:25521", "train", "60000", "127.0.0.1:25520"))
-
-  SentinelApp.main(Array("127.0.0.1:25522", "train", "3000", "127.0.0.1:25520"))
-
+  SentinelApp.main(Array("127.0.0.1", "train", "1000", "127.0.0.1:25520"))
+  SentinelApp.main(Array("127.0.0.1", "train", "3000", "127.0.0.1:25520"))
+  SentinelApp.main(Array("127.0.0.1", "validate", "10000", "127.0.0.1:25520"))
 }
 
 object SentinelApp extends App {
@@ -79,9 +76,10 @@ object SentinelApp extends App {
 
   val batchSize = 256
   val concurrency = 1
-  val name = UUID.randomUUID().toString
+  val name = s"$mode-${take.get}-${UUID.randomUUID().toString}"
 
-  implicit val system: ActorSystem = RemotingUtil.makeActorSystem(localAddr)
+  implicit val system: ActorSystem =
+    RemotingUtil.makeActorSystem(localAddr, "0")
 
   val tdp = DataProvider("mnist", mode, batchSize, take, s"dp4$name")
   val sentinel =
