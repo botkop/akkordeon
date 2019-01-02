@@ -13,9 +13,14 @@ package object akkordeon {
   case object Start
 
   trait Message extends Serializable
-  // case class Forward(sentinel: ActorRef, x: Variable, y: Variable, id: Int = Random.nextInt()) extends Message
-  // case class Backward(sentinel: ActorRef, g: Variable, id: Int) extends Message
-  case class Validate(sentinel: ActorRef, x: Variable, y: Variable) extends Message
+  case class Forward(sentinel: ActorRef,
+                     x: Variable,
+                     y: Variable,
+                     id: Int = Random.nextInt())
+      extends Message
+  case class Backward(sentinel: ActorRef, g: Variable, id: Int) extends Message
+  case class Validate(sentinel: ActorRef, x: Variable, y: Variable)
+      extends Message
 
   case class Batch(x: Variable, y: Variable)
   case object Batch {
