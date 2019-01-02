@@ -82,8 +82,8 @@ This will produce output similar to this:
 
 ### Multiple JVMs
 Obtain the IP address of the machine on which you want to run the network. 
-If you run all JVMs on the same machine, then you can use 127.0.0.1.
-Append the port number separated by colon:
+If you run all JVMs on the same machine, then you can use `127.0.0.1`.
+Append a free port number separated by colon:
 ```
 export NNADDR=192.168.1.23:25520
 ```
