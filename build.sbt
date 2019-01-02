@@ -21,7 +21,6 @@ libraryDependencies ++= Seq(
   
   "be.botkop" %% "scorch" % "0.1.1",
   "org.nd4j" % "nd4j-kryo_2.11" % "0.9.1",
-  // "org.nd4j" % "nd4j-aeron" % "0.9.1",
 
   "org.scalatest" %% "scalatest" % "3.0.5" % "test"
 )

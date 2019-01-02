@@ -62,6 +62,7 @@ You will need [sbt](https://www.scala-sbt.org/download.html) to build the projec
 
 ## Build and run
 
+### Single JVM
 ```
 sbt 'runMain botkop.akkordeon.SimpleAkkordeon'
 ```
@@ -77,6 +78,20 @@ This will produce output similar to this:
 [info] tdp        epoch:     6 loss:  0.880695 duration: 2259.42184ms scores: (0.7060564301781735)
 [info] tdp        epoch:     7 loss:  0.892328 duration: 2856.552759ms scores: (0.7027704402551813)
 [info] vdp        epoch:     1 loss:  0.866831 duration: 1768.835725ms scores: (0.7107204861111112)
+```
+
+### Multiple JVMs
+Start the network in a terminal window:
+```
+sbt 'runMain botkop.akkordeon.remoting.NetworkApp 25520'
+```
+Start a sentinel in another terminal:
+```
+sbt 'runMain botkop.akkordeon.remoting.SentinelApp 25521 trainingSentinel1 train 60000 akka://AkkordeonCluster@127.0.0.1:25520/user/g0 akka://AkkordeonCluster@127.0.0.1:25520/user/g2'
+```
+And another one:
+```
+sbt 'runMain botkop.akkordeon.remoting.SentinelApp 25522 trainingSentinel2 train 3000 akka://AkkordeonCluster@127.0.0.1:25520/user/g0 akka://AkkordeonCluster@127.0.0.1:25520/user/g2'
 ```
 
 # References
