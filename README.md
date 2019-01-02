@@ -81,13 +81,13 @@ This will produce output similar to this:
 ```
 
 ### Multiple JVMs
-Obtain the IP address of the machine on which you want to run the network. 
+Obtain the IP address of the machine on which you want to run the neural net. 
 If you run all JVMs on the same machine, then you can use `127.0.0.1`.
 Append a free port number separated by colon:
 ```
 export NNADDR=192.168.1.23:25520
 ```
-Start the network in a terminal window:
+Start the neural net in a terminal window:
 ```
 sbt "runMain botkop.akkordeon.remoting.NetworkApp $NNADDR"
 ```

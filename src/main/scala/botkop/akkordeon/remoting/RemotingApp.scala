@@ -26,13 +26,15 @@ object RemotingApp extends App {
   NetworkApp.main(Array("127.0.0.1:25520"))
 
   SentinelApp.main(
-    Array("trainingSentinel1",
+    Array("127.0.0.1:25521",
+          "trainingSentinel1",
           "train",
           "60000",
           "127.0.0.1:25520"))
 
   SentinelApp.main(
-    Array("trainingSentinel2",
+    Array("127.0.0.1:25522",
+          "trainingSentinel2",
           "train",
           "3000",
           "127.0.0.1:25520"))
@@ -40,22 +42,25 @@ object RemotingApp extends App {
 }
 
 object SentinelApp extends App {
-  val name = args(0)
-  val mode = args(1)
-  val take = Some(args(2).toInt)
-  val nnAddress = args(3)
+  val localAddr = args(0)
+  val name = args(1)
+  val mode = args(2)
+  val take = Some(args(3).toInt)
+  val nnAddress = args(4)
 
   val batchSize = 256
   val concurrency = 1
 
+  val Array(host, port) = localAddr.split(":")
   val config = ConfigFactory
     .parseString(s"""
-                    |akka.remote.artery.canonical.hostname = 127.0.0.1
-                    |akka.remote.artery.canonical.port = 0
+                    |akka.remote.artery.canonical.hostname = $host
+                    |akka.remote.artery.canonical.port = $port
                     |""".stripMargin)
     .withFallback(ConfigFactory.load("remoting"))
 
-  implicit val system: ActorSystem = ActorSystem(RemotingSettings.clusterName, config)
+  implicit val system: ActorSystem =
+    ActorSystem(RemotingSettings.clusterName, config)
 
   val tdp = DataProvider("mnist", mode, batchSize, take, s"dp4$name")
   val sentinel =
@@ -64,13 +69,18 @@ object SentinelApp extends App {
   implicit val execContext: ExecutionContextExecutor = system.dispatcher
   implicit val timeout: Timeout = Timeout(3 seconds)
 
-  def path(gate: String) = s"akka://${RemotingSettings.clusterName}@$nnAddress/user/$gate"
+  def path(gate: String) =
+    s"akka://${RemotingSettings.clusterName}@$nnAddress/user/$gate"
 
   Future
     .sequence(
       List(
-        system.actorSelection(path(RemotingSettings.nameOfFirstGate)).resolveOne(),
-        system.actorSelection(path(RemotingSettings.nameOfLastGate)).resolveOne()
+        system
+          .actorSelection(path(RemotingSettings.nameOfFirstGate))
+          .resolveOne(),
+        system
+          .actorSelection(path(RemotingSettings.nameOfLastGate))
+          .resolveOne()
       ))
     .foreach {
       case List(head, last) =>
@@ -80,9 +90,8 @@ object SentinelApp extends App {
 }
 
 object NetworkApp extends App {
-  val addr = args(0)
-  val Array(host, port) = addr.split(":")
-  // val port = args(1)
+  val localAddr = args(0)
+  val Array(host, port) = localAddr.split(":")
   val config = ConfigFactory
     .parseString(s"""
          |akka.remote.artery.canonical.hostname = $host
