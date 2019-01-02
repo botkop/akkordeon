@@ -58,14 +58,14 @@ object RemotingUtil {
           sentinel ! Start
       }
   }
-
 }
 
 object RemotingApp extends App {
-  NetworkApp.main(Array("127.0.0.1:25520"))
-  SentinelApp.main(Array("127.0.0.1", "train", "1000", "127.0.0.1:25520"))
-  SentinelApp.main(Array("127.0.0.1", "train", "3000", "127.0.0.1:25520"))
-  SentinelApp.main(Array("127.0.0.1", "validate", "10000", "127.0.0.1:25520"))
+  val nnAddress = "127.0.0.1:25520"
+  NetworkApp.main(Array(nnAddress))
+  SentinelApp.main(Array("127.0.0.1", "train", "1000", nnAddress))
+  SentinelApp.main(Array("127.0.0.1", "train", "3000", nnAddress))
+  SentinelApp.main(Array("127.0.0.1", "validate", "10000", nnAddress))
 }
 
 object SentinelApp extends App {
