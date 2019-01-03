@@ -1,10 +1,10 @@
-package botkop.akkordeon
+package botkop.akkordeon.examples
 
 import akka.actor.ActorSystem
-import botkop.{numsca => ns}
+import botkop.akkordeon._
 import scorch._
 import scorch.autograd.Variable
-import scorch.nn.{Dropout, Linear, Module}
+import scorch.nn.{Linear, Module}
 import scorch.optim.DCASGDa
 
 import scala.language.postfixOps

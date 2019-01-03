@@ -8,14 +8,14 @@ This project shows how to train a neural net with Akka.
 
 The mechanics are as follows:
 
-A layer is embedded in a [gate](#gate), and implemented as an actor. 
-The results of the forward and backward pass are passed as messages from one gate (layer) to the next.
+A layer is embedded in a [gate](#gate). A gate is an actor. 
+The results of the forward and backward pass are passed as messages from one gate to the next.
 Calculations inside a layer are performed asynchronously from other layers.
 Thus, a layer does not have to wait for the backward pass in order to perform the forward pass of the next batch.
 
-Every gate has its own optimizer.
+Every gate has its optimizer.
 Optimization on a layer thus runs asynchronously from other layers. 
-To alleviate the 'delayed gradient' problem, we use an implementation of the ['Asynchronous Stochastic Gradient Descent with Delay Compensation'](https://arxiv.org/abs/1609.08326) optimizer.
+To alleviate the 'delayed gradient' problem, I use an implementation of the ['Asynchronous Stochastic Gradient Descent with Delay Compensation'](https://arxiv.org/abs/1609.08326) optimizer.
 
 Data providers are embedded in [sentinels](#sentinel) and implemented as actors. You can have mutiple sentinels running at the same time, each with a subset of the training data for example.
 This also allows us to run the training and validation phases concurrently.
@@ -30,7 +30,7 @@ All actors can be deployed on a single machine or in a cluster of machines, thus
 ### Gate
 A gate is similar to a layer. 
 Every gate is an actor. 
-Whereas in a traditional network there is only one optimizer for the complete network, here every gate has its own optimizer. 
+Whereas in a traditional network there is only one optimizer for the complete network, here every gate has its optimizer. 
 There is however no difference in functionality, since optimizers do not share data between layers. 
 
 A gate can consist of an arbitrarily complex network in itself. 
@@ -40,7 +40,7 @@ Or you can assign them to different gates, thus distributing the work over multi
 ### Network
 A network is a sequence of gates.
 The sequence is open. 
-You can attach multiple sentinels, each with its own data provider, to the network.
+You can attach multiple sentinels, each with its data provider, to the network.
 
 ### Sentinel
 The sentinel is an actor, and does a couple of things:
@@ -81,6 +81,13 @@ This will produce output similar to this:
 ```
 
 ### Multiple JVMs
+In this scenario, I show how to deploy the neural net on one JVM, and the sentinels on other JVMs.
+The JVMs can be deployed on the same machine, or on different machines.
+Note that when deploying the sentinels on separate machines, you will need to make the data accessible on those machines.
+
+Another scenario that comes to mind is to split the network itself in separate entities, and deploy those on different JVMs.
+Let's say that for now, I leave this as an exercise for the reader.
+
 Obtain the IP address of the machine on which you want to run the neural net. 
 If you run all JVMs on the same machine, then you can use `127.0.0.1`.
 Append a free port number separated by colon:
@@ -89,24 +96,25 @@ export NNADDR=192.168.1.23:25520
 ```
 Start the neural net in a terminal window:
 ```
-sbt "runMain botkop.akkordeon.remoting.NetworkApp $NNADDR"
+sbt "runMain botkop.akkordeon.examples.NetworkApp $NNADDR"
 ```
 Obtain the IP address of a machine on which you want to run a sentinel.
 If you run all JVMs on the same machine, then you can use `127.0.0.1`.
+The parameter `60000` is the number of samples from the data set you want to use. 
 Start a training sentinel in another terminal:
 ```
 MY_IP=192.168.0.158
-sbt "runMain botkop.akkordeon.remoting.SentinelApp $MY_IP train 60000 $NNADDR"
+sbt "runMain botkop.akkordeon.examples.SentinelApp $MY_IP train 60000 $NNADDR"
 ```
 And another one:
 ```
 MY_IP=192.168.0.159
-sbt "runMain botkop.akkordeon.remoting.SentinelApp $MY_IP train 3000 $NNADDR"
+sbt "runMain botkop.akkordeon.examples.SentinelApp $MY_IP train 3000 $NNADDR"
 ```
 Also start a validation sentinel. 
 ```
 MY_IP=192.168.0.160
-sbt "runMain botkop.akkordeon.remoting.SentinelApp $MY_IP validate 10000 $NNADDR"
+sbt "runMain botkop.akkordeon.examples.SentinelApp $MY_IP validate 10000 $NNADDR"
 ```
 
 
