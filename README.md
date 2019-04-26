@@ -1,5 +1,9 @@
 "What I cannot create, I do not understand." - Richard Feynman.
 
+
+This project shows how to train an artificial neural network in an actor framework. Traditional neural networks are monolithic blobs trained on static hardware infrastructure. Here I propose an approach that distributes the components of a neural net (layers, data providers...) over multiple processes that run independently (async and concurrent), possibly on different machines. It also allows to dynamically add or remove training, validation and test modules.
+
+
 # Akkordeon: Training a neural net with Akka
 
 The world is asynchronous. 
