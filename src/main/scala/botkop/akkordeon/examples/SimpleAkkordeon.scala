@@ -1,6 +1,8 @@
 package botkop.akkordeon.examples
 
 import akka.actor.ActorSystem
+
+import scala.concurrent.duration._
 import botkop.akkordeon._
 import scorch._
 import scorch.autograd.Variable
@@ -32,10 +34,11 @@ object SimpleAkkordeon extends App {
   val vdp = DataProvider("mnist", "validate", 1024, None, "vdp")
   val vs = Sentinel(vdp, 1, softmaxLoss, List(accuracy), "vs").stage
   vs ! Wire(net)
-  while (true) {
-    Thread.sleep(20000)
-    vs ! Start
-  }
+
+  system.scheduler.schedule(initialDelay = 20 seconds,
+                            interval = 20 seconds,
+                            receiver = vs,
+                            message = Start)(system.dispatcher)
 
   def makeNet(sizes: List[Int],
               learningRates: List[Double],
