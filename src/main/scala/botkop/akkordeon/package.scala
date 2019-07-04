@@ -26,6 +26,9 @@ package object akkordeon {
   case object Batch {
     def apply(xy: (Variable, Variable)): Batch = Batch(xy._1, xy._2)
   }
+
+  case class FirstBatch(recipient: ActorRef)
+
   case class NextBatch(recipient: ActorRef)
 
   case class Epoch(provider: String, n: Int, duration: Long)

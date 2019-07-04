@@ -44,11 +44,16 @@ object SentinelApp extends App {
 
   RemotingUtil.startSentinel(sentinel, nnAddress)
 
+
   if (mode == "validate") {
-    while (true) {
-      Thread.sleep(10000)
-      sentinel ! Start
-    }
+    system.scheduler.schedule(initialDelay = 20 seconds,
+      interval = 20 seconds,
+      receiver = sentinel,
+      message = Start)(system.dispatcher)
+    //    while (true) {
+//      Thread.sleep(10000)
+//      sentinel ! Start
+//    }
   }
 }
 

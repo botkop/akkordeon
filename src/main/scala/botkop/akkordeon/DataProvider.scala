@@ -45,24 +45,28 @@ class DataProviderActor(dp: DataProvider) extends Actor with ActorLogging {
 
   override def receive: Receive = {
     val ndi = dl.iterator
-    provide(ndi, ndi.next(), 1, 0)
+    provide(ndi, ndi.next(), epoch = 0, startTime = 0)
   }
 
   def provide(di: DataIterator,
               nextBatch: (Variable, Variable),
               epoch: Int,
               startTime: Long): Receive = {
+
+    case FirstBatch(r) =>
+      r forward f(Batch(nextBatch), sender())
+      context become provide(di, di.next(), epoch + 1, System.nanoTime())
+
     case NextBatch(r) =>
       r forward f(Batch(nextBatch), sender())
 
       if (di.hasNext) {
-        val t = if (startTime == 0) System.nanoTime() else startTime
-        context become provide(di, di.next(), epoch, t)
+        context become provide(di, di.next(), epoch, startTime)
       } else {
         val duration = System.nanoTime() - startTime
         sender() ! Epoch(name, epoch, duration)
         val ndi = dl.iterator
-        context become provide(ndi, ndi.next(), epoch + 1, 0)
+        context become provide(ndi, ndi.next(), epoch + 1, System.nanoTime())
       }
   }
 }

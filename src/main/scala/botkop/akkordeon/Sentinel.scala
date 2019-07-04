@@ -36,7 +36,7 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
 
   def messageHandler(prev: ActorRef, next: ActorRef): Receive = {
     case Start =>
-      1 to concurrency foreach (_ => dl ! NextBatch(next))
+      1 to concurrency foreach (_ => dl ! FirstBatch(next))
 
     case Forward(ar, yHat, y, id) =>
       val l = lossFunction(yHat, y)
@@ -70,7 +70,6 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
           f"loss: $loss%9.6f " +
           s"""scores: (${scores.mkString(", ")}) """ +
           f"duration: ${duration / 1e6.toLong}ms")
-
       loss = 0
       numBatches = 0
       scores.indices.foreach(i => scores(i) = 0)
