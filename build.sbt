@@ -22,7 +22,15 @@ libraryDependencies ++= Seq(
   "be.botkop" %% "scorch" % "0.1.1",
   "org.nd4j" % "nd4j-kryo_2.11" % "0.9.1",
 
+  "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
+  "ch.qos.logback" % "logback-classic" % "1.2.3",
+
   "org.scalatest" %% "scalatest" % "3.0.5" % "test"
 )
+
+// when OMP_NUM_THREADS is set to default by nd4j, 
+// then lots more CPU is used for no notable performance gain
+// set setting it to 1
+envVars := Map("OMP_NUM_THREADS" -> "1")
 
 fork := true

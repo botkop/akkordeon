@@ -7,7 +7,7 @@ import scorch.data.loader.DataLoader
 case class DataProvider(dl: DataLoader,
                         f: (Batch, ActorRef) => Message,
                         name: String)
-    extends Stageable {
+  extends Stageable {
 
   override def stage(implicit system: ActorSystem): ActorRef =
     system.actorOf(Props(new DataProviderActor(this)), name)
@@ -31,7 +31,7 @@ object DataProvider {
 
   def apply(dl: DataLoader, name: String): DataProvider = {
     val f = dl.mode match {
-      case "train"    => b2f
+      case "train" => b2f
       case "validate" => b2v
     }
     DataProvider(dl, f, name)
@@ -48,6 +48,19 @@ class DataProviderActor(dp: DataProvider) extends Actor with ActorLogging {
     provide(ndi, ndi.next(), epoch = 0, startTime = 0)
   }
 
+  def nextMessage(di: DataIterator,
+                  epoch: Int,
+                  startTime: Long): Unit = {
+    if (di.hasNext) {
+      context become provide(di, di.next(), epoch, startTime)
+    } else {
+      val duration = System.nanoTime() - startTime
+      sender() ! Epoch(name, epoch, duration)
+      val ndi = dl.iterator
+      context become provide(ndi, ndi.next(), epoch + 1, System.nanoTime())
+    }
+  }
+
   def provide(di: DataIterator,
               nextBatch: (Variable, Variable),
               epoch: Int,
@@ -55,18 +68,20 @@ class DataProviderActor(dp: DataProvider) extends Actor with ActorLogging {
 
     case FirstBatch(r) =>
       r forward f(Batch(nextBatch), sender())
-      context become provide(di, di.next(), epoch + 1, System.nanoTime())
+      nextMessage(di, epoch, startTime)
+      // context become provide(di, di.next(), epoch + 1, System.nanoTime())
 
     case NextBatch(r) =>
       r forward f(Batch(nextBatch), sender())
+      nextMessage(di, epoch, startTime)
 
-      if (di.hasNext) {
-        context become provide(di, di.next(), epoch, startTime)
-      } else {
-        val duration = System.nanoTime() - startTime
-        sender() ! Epoch(name, epoch, duration)
-        val ndi = dl.iterator
-        context become provide(ndi, ndi.next(), epoch + 1, System.nanoTime())
-      }
+//      if (di.hasNext) {
+//        context become provide(di, di.next(), epoch, startTime)
+//      } else {
+//        val duration = System.nanoTime() - startTime
+//        sender() ! Epoch(name, epoch, duration)
+//        val ndi = dl.iterator
+//        context become provide(ndi, ndi.next(), epoch + 1, System.nanoTime())
+//      }
   }
 }

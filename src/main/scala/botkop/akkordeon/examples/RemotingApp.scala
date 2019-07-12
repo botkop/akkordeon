@@ -17,8 +17,10 @@ import scala.util.Random
 object RemotingApp extends App {
   val nnAddress = "127.0.0.1:25520"
   NetworkApp.main(Array(nnAddress))
-  SentinelApp.main(Array("127.0.0.1", "train", "1000", nnAddress))
-  SentinelApp.main(Array("127.0.0.1", "train", "3000", nnAddress))
+  SentinelApp.main(Array("127.0.0.1", "train", "60000", nnAddress))
+  SentinelApp.main(Array("127.0.0.1", "train", "60000", nnAddress))
+  SentinelApp.main(Array("127.0.0.1", "train", "60000", nnAddress))
+  SentinelApp.main(Array("127.0.0.1", "train", "60000", nnAddress))
   SentinelApp.main(Array("127.0.0.1", "validate", "10000", nnAddress))
 }
 
@@ -28,8 +30,9 @@ object SentinelApp extends App {
   val take = Some(args(2).toInt)
   val nnAddress = args(3)
 
-  val batchSize = 256
-  val concurrency = 2
+  val concurrency = if (mode == "validate") 1 else 8
+  val batchSize = (512 / concurrency) + Random.nextInt(50)
+  //  val batchSize = 256
 //  val batchSize = 16
 //  val concurrency = 16
   val n = Random.alphanumeric.take(4).mkString
@@ -38,22 +41,17 @@ object SentinelApp extends App {
   implicit val system: ActorSystem =
     RemotingUtil.makeActorSystem(localAddr, "0") // don't care which port
 
-  val tdp = DataProvider("mnist", mode, batchSize, take, s"dp-$name")
+  val dp = DataProvider("mnist", mode, batchSize, take, s"dp-$name")
   val sentinel =
-    Sentinel(tdp, concurrency, softmaxLoss, List(accuracy), name).stage
+    Sentinel(dp, concurrency, softmaxLoss, List(accuracy), name).stage
 
   RemotingUtil.startSentinel(sentinel, nnAddress)
 
-
   if (mode == "validate") {
-    system.scheduler.schedule(initialDelay = 20 seconds,
-      interval = 20 seconds,
+    system.scheduler.schedule(initialDelay = 120 seconds,
+      interval = 60 seconds,
       receiver = sentinel,
       message = Start)(system.dispatcher)
-    //    while (true) {
-//      Thread.sleep(10000)
-//      sentinel ! Start
-//    }
   }
 }
 
@@ -64,7 +62,8 @@ object NetworkApp extends App {
 
   val imageSize: Int = 28 * 28
   val sizes = List(imageSize, 50, 20, 10)
-  val learningRates = List(2e-2, 1e-2, 5e-3)
+  // val learningRates = List(2e-2, 1e-2, 5e-3)
+  val learningRates = List(5e-3, 2e-3, 1e-3)
   val dropOuts = List(0.15, 0.07, 0.03)
   val gates: List[Gate] = makeNet(sizes, learningRates, dropOuts)
   val net: List[ActorRef] = Stageable.connect(gates)

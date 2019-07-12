@@ -1,6 +1,7 @@
 package botkop.akkordeon
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
+import akka.event.Logging
 import scorch.autograd.Variable
 
 import scala.collection.mutable.ArrayBuffer
@@ -17,6 +18,7 @@ case class Sentinel(dataProvider: DataProvider,
 
 class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
 
+
   import sentinel._
 
   var loss = 0.0
@@ -24,6 +26,8 @@ class SentinelActor(sentinel: Sentinel) extends Actor with ActorLogging {
   var numBatches = 0
 
   val dl: ActorRef = dataProvider.stage(context.system)
+
+  override val log = Logging(context.system.eventStream, sentinel.name)
 
   override def receive: Receive = {
     case w: Wire =>
