@@ -18,7 +18,7 @@ Calculations inside a layer are performed asynchronously from other layers.
 Thus, a layer does not have to wait for the backward pass in order to perform the forward pass of the next batch.
 
 Every gate has its optimizer.
-Optimization on a layer runs asynchronously from other layers. 
+Optimization on a gate runs asynchronously from other gates. 
 To alleviate the 'delayed gradient' problem, I use an implementation of the ['Asynchronous Stochastic Gradient Descent with Delay Compensation'](https://arxiv.org/abs/1609.08326) optimizer.
 
 Data providers are embedded in [sentinels](#sentinel) and implemented as actors. You can have mutiple sentinels running at the same time, each with a subset of the training data for example.
